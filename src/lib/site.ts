@@ -1,0 +1,170 @@
+export const site = {
+  name: "Kamal Studios",
+  tagline: "The Best | Since 1966",
+  domain: "www.kamalstudios.com",
+  phone: "+91 98765 43210",
+  phoneRaw: "+919876543210",
+  whatsapp: "+919876543210",
+  whatsappUrl: "https://wa.me/919876543210",
+  email: "hello@kamalstudios.com",
+  address: "Kamal Studios, Sector 17, Chandigarh, India",
+  hours: "Mon – Sun · 10:00 – 20:00",
+  since: 1966,
+  social: {
+    instagram: "https://www.instagram.com/kamalstudio.photography",
+    youtube: "https://www.youtube.com/@thekamalstudios",
+    facebook: "https://www.facebook.com/share/18aqwNjFQT/",
+    google: "https://maps.app.goo.gl/Pt6FE9VyGuLZZLWv5",
+  },
+  stats: {
+    years: new Date().getFullYear() - 1966,
+    projects: "4,800+",
+    clients: "3,200+",
+    cities: "60+",
+    rating: 4.9,
+    reviews: 820,
+  },
+};
+
+const u = (id: string, w = 1600) =>
+  `https://images.unsplash.com/photo-${id}?w=${w}&q=80&auto=format&fit=crop`;
+
+// Every key = a UNIQUE Unsplash photo. No duplication anywhere.
+// Replace files by swapping URLs; do not restructure sections.
+export const img = {
+  heroWedding: u("1519741497674-611481863552", 1920),
+  hero2: u("1465495976277-4387d4b0b4c6", 1920),
+  hero3: u("1519225421980-715cb0215aed", 1920),
+  bridal: u("1537633552985-df8429e8048b"),
+  couple: u("1522673607200-164d1b6ce486"),
+  couple2: u("1511285560929-80b456fea0bc"),
+  couple3: u("1583939003579-730e3918a45a"),
+  baby: u("1519689680058-324335c77eba"),
+  maternity: u("1555252333-9f8e92e65df9"),
+  family: u("1511895426328-dc8714191300"),
+  fashion: u("1490481651871-ab68de25d43d"),
+  product: u("1523275335684-37898b6baf30"),
+  corporate: u("1521737604893-d14cc237f11d"),
+  drone: u("1500835556837-99ac94a94552"),
+  event: u("1511578314322-379afb476865"),
+  realestate: u("1560448204-e02f11c3d0e2"),
+  studio: u("1502920917128-1aa500764cbd"),
+  ring: u("1606216794074-735e91aa2c92"),
+  aisle: u("1465495976277-4387d4b0b4c6"),
+  mehndi: u("1600091166971-7f9faad6c1e2"),
+  haldi: u("1610375461369-d613b564f4c4"),
+  reception: u("1464366400600-7168b8af9bc3"),
+  destination: u("1520854221256-17451cc331bf"),
+  music: u("1493225457124-a3eb161ffa5f"),
+  team: u("1554774853-aae0a22c8aa4"),
+  album: u("1519741497674-611481863552"),
+  studioBw: u("1502920917128-1aa500764cbd"),
+};
+
+// UNIQUE placeholder collections per category (no image repeats across categories).
+// Swap files here later without touching layout code.
+export const categoryImages = {
+  Wedding: [
+    u("1519741497674-611481863552"),
+    u("1537633552985-df8429e8048b"),
+    u("1465495976277-4387d4b0b4c6"),
+    u("1606216794074-735e91aa2c92"),
+    u("1464366400600-7168b8af9bc3"),
+    u("1519225421980-715cb0215aed"),
+    u("1520854221256-17451cc331bf"),
+    u("1522673607200-164d1b6ce486"),
+  ],
+  "Pre-Wedding": [
+    u("1511285560929-80b456fea0bc"),
+    u("1583939003579-730e3918a45a"),
+    u("1522673607200-164d1b6ce486"),
+    u("1502823403499-6ccfcf4fb453"),
+    u("1494790108377-be9c29b29330"),
+    u("1524504388940-b1c1722653e1"),
+  ],
+  Baby: [
+    u("1519689680058-324335c77eba"),
+    u("1544367567-0f2fcb009e0b"),
+    u("1519689373023-dd07c7988603"),
+    u("1544126592-807ade215a0b"),
+    u("1595939760339-08b90b1a0e6d"),
+    u("1607453998774-d533f65dac99"),
+    u("1519456264917-42d0aa2e0625"),
+  ],
+  Maternity: [
+    u("1555252333-9f8e92e65df9"),
+    u("1518623489648-a173ef7824f3"),
+    u("1520975916090-3105956dac38"),
+    u("1544367567-0f2fcb009e0b"),
+    u("1518831959646-742c3a14ebf7"),
+    u("1607453998774-d533f65dac99"),
+  ],
+  Fashion: [
+    u("1490481651871-ab68de25d43d"),
+    u("1483985988355-763728e1935b"),
+    u("1509631179647-0177331693ae"),
+    u("1469334031218-e382a71b716b"),
+    u("1487222477894-8943e31ef7b2"),
+    u("1541101767792-f9b2b1c4f127"),
+    u("1502716119720-b23a93e5fe1b"),
+  ],
+  Commercial: [
+    u("1523275335684-37898b6baf30"),
+    u("1560343090-f0409e92791a"),
+    u("1553545204-4f7d339aa06a"),
+    u("1526170375885-4d8ecf77b99f"),
+    u("1542291026-7eec264c27ff"),
+    u("1560769629-975ec94e6a86"),
+    u("1572635196237-14b3f281503f"),
+  ],
+  Corporate: [
+    u("1521737604893-d14cc237f11d"),
+    u("1497215728101-856f4ea42174"),
+    u("1573496359142-b8d87734a5a2"),
+    u("1560250097-0b93528c311a"),
+    u("1600880292203-757bb62b4baf"),
+    u("1520607162513-77705c0f0d4a"),
+  ],
+  Events: [
+    u("1511578314322-379afb476865"),
+    u("1493225457124-a3eb161ffa5f"),
+    u("1470229722913-7c0e2dbbafd3"),
+    u("1533174072545-7a4b6ad7a6c3"),
+    u("1519671482749-fd09be7ccebf"),
+    u("1464047736614-af63643285bf"),
+  ],
+  Products: [
+    u("1585386959984-a4155224a1ad"),
+    u("1526170375885-4d8ecf77b99f"),
+    u("1523275335684-37898b6baf30"),
+    u("1572635196237-14b3f281503f"),
+    u("1542291026-7eec264c27ff"),
+    u("1560343090-f0409e92791a"),
+  ],
+  "Real Estate": [
+    u("1560448204-e02f11c3d0e2"),
+    u("1512917774080-9991f1c4c750"),
+    u("1600585154340-be6161a56a0c"),
+    u("1613977257363-707ba9348227"),
+    u("1600607687939-ce8a6c25118c"),
+    u("1600566753190-17f0baa2a6c3"),
+  ],
+} as const;
+
+export type CategoryKey = keyof typeof categoryImages;
+
+// A flat, curated cross-section for the home preview grid — no duplication.
+export const gallery = [
+  categoryImages.Wedding[0],
+  categoryImages["Pre-Wedding"][0],
+  categoryImages.Baby[0],
+  categoryImages.Fashion[0],
+  categoryImages.Commercial[0],
+  categoryImages.Corporate[0],
+  categoryImages.Events[0],
+  categoryImages.Maternity[0],
+  categoryImages.Wedding[3],
+  categoryImages["Real Estate"][0],
+  categoryImages.Products[0],
+  categoryImages.Fashion[2],
+];
