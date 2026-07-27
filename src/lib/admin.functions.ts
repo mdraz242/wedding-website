@@ -116,8 +116,13 @@ export const getSiteSettings = createServerFn({ method: "GET" }).handler(async (
 /* ─────────── Gate ─────────── */
 
 export const adminIsUnlocked = createServerFn({ method: "GET" }).handler(async () => {
-  const session = await useSession<GateSession>(sessionConfig());
-  return { unlocked: !!session.data.unlocked };
+  try {
+    const session = await useSession<GateSession>(sessionConfig());
+    return { unlocked: !!session.data.unlocked };
+  } catch (error) {
+    console.error("adminIsUnlocked session error:", error);
+    return { unlocked: false };
+  }
 });
 
 export const adminUnlock = createServerFn({ method: "POST" })

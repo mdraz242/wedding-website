@@ -54,10 +54,16 @@ function Admin() {
   const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
-    check().then((r) => {
-      setUnlocked(r.unlocked);
-      setReady(true);
-    });
+    check()
+      .then((r) => {
+        setUnlocked(r?.unlocked ?? false);
+        setReady(true);
+      })
+      .catch((err) => {
+        console.error("Failed to check admin status:", err);
+        setUnlocked(false);
+        setReady(true);
+      });
   }, [check]);
 
   if (!ready) {
