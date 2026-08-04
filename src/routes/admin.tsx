@@ -12,6 +12,10 @@ import {
   Lock,
   Settings as SettingsIcon,
   Globe,
+  Briefcase,
+  MapPin,
+  Star,
+  Sparkles,
 } from "lucide-react";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
@@ -35,8 +39,16 @@ import {
   upsertPost,
   deletePost,
   updateAdminSiteSettings,
+  getCustomServices,
+  updateCustomServices,
+  getCustomLocations,
+  updateCustomLocations,
+  getCustomReviews,
+  updateCustomReviews,
 } from "@/lib/admin.functions";
 import { useSiteContent, type SiteSettings } from "@/hooks/useSiteContent";
+import { services as defaultServices, type Service } from "@/data/services";
+import { locations as defaultLocations, type Location } from "@/data/locations";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -45,8 +57,16 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
-type Tab = "overview" | "enquiries" | "portfolio" | "blog" | "content" | "settings";
-
+type Tab =
+  | "overview"
+  | "enquiries"
+  | "portfolio"
+  | "blog"
+  | "services"
+  | "locations"
+  | "reviews"
+  | "content"
+  | "settings";
 
 function Admin() {
   const check = useServerFn(adminIsUnlocked);
@@ -75,7 +95,7 @@ function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
       {unlocked ? <Dashboard onLock={() => setUnlocked(false)} /> : <PasswordGate onUnlocked={() => setUnlocked(true)} />}
       <SiteFooter />
@@ -103,7 +123,7 @@ function PasswordGate({ onUnlocked }: { onUnlocked: () => void }) {
 
   return (
     <section className="pt-40 pb-32 container-lux flex justify-center">
-      <form onSubmit={submit} className="w-full max-w-sm border border-border p-10 bg-card">
+      <form onSubmit={submit} className="w-full max-w-sm border border-border p-10 bg-card rounded-sm">
         <Lock className="size-6 text-[color:var(--gold)]" />
         <h1 className="mt-4 font-display text-3xl">Studio Admin</h1>
         <p className="text-sm text-muted-foreground mt-1">Enter the studio password.</p>
@@ -114,13 +134,13 @@ function PasswordGate({ onUnlocked }: { onUnlocked: () => void }) {
           value={pw}
           onChange={(e) => setPw(e.target.value)}
           placeholder="Password"
-          className="mt-8 w-full bg-transparent border-b border-border py-3 focus:outline-none focus:border-[color:var(--gold)]"
+          className="mt-8 w-full bg-transparent border-b border-border py-3 focus:outline-none focus:border-[color:var(--gold)] text-sm"
         />
         {err && <div className="mt-3 text-xs text-destructive">{err}</div>}
         <button
           type="submit"
           disabled={busy}
-          className="mt-8 w-full bg-foreground text-background py-3 text-xs uppercase tracking-[0.24em] hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
+          className="mt-8 w-full bg-foreground text-background py-3 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
         >
           {busy ? "Please wait…" : "Enter dashboard"}
         </button>
@@ -140,7 +160,7 @@ function Dashboard({ onLock }: { onLock: () => void }) {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <div className="kbd-eyebrow text-[color:var(--gold)]">Dashboard</div>
-          <h1 className="mt-3 font-display text-5xl">Studio Admin</h1>
+          <h1 className="mt-3 font-display text-4xl md:text-5xl">Studio Control Center</h1>
         </div>
         <button
           onClick={async () => {
@@ -153,13 +173,16 @@ function Dashboard({ onLock }: { onLock: () => void }) {
         </button>
       </div>
 
-      <div className="mt-10 flex flex-wrap gap-2 border-b border-border">
+      <div className="mt-10 flex flex-wrap gap-2 border-b border-border overflow-x-auto">
         {(
           [
             ["overview", "Overview"],
             ["enquiries", "Enquiries"],
             ["portfolio", "Portfolio"],
             ["blog", "Blog"],
+            ["services", "Services"],
+            ["locations", "Locations"],
+            ["reviews", "Reviews"],
             ["content", "Content"],
             ["settings", "Settings"],
           ] as [Tab, string][]
@@ -167,9 +190,9 @@ function Dashboard({ onLock }: { onLock: () => void }) {
           <button
             key={k}
             onClick={() => setTab(k)}
-            className={`px-4 py-3 text-xs uppercase tracking-[0.22em] border-b-2 -mb-px transition-colors ${
+            className={`px-4 py-3 text-xs uppercase tracking-[0.22em] border-b-2 -mb-px transition-colors whitespace-nowrap ${
               tab === k
-                ? "border-[color:var(--gold)] text-foreground"
+                ? "border-[color:var(--gold)] text-foreground font-semibold"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -183,6 +206,9 @@ function Dashboard({ onLock }: { onLock: () => void }) {
         {tab === "enquiries" && <EnquiriesPanel />}
         {tab === "portfolio" && <PortfolioPanel />}
         {tab === "blog" && <BlogPanel />}
+        {tab === "services" && <ServicesPanel />}
+        {tab === "locations" && <LocationsPanel />}
+        {tab === "reviews" && <ReviewsPanel />}
         {tab === "content" && <ContentPanel />}
         {tab === "settings" && <SettingsPanel />}
       </div>
@@ -195,28 +221,36 @@ function Overview({ onGo }: { onGo: (t: Tab) => void }) {
   const enq = useServerFn(listEnquiries);
   const alb = useServerFn(listAlbums);
   const pos = useServerFn(listPosts);
+  const { customServices, customLocations, customReviews } = useSiteContent();
+
   useEffect(() => {
     Promise.all([enq(), alb(), pos()]).then(([a, b, c]) =>
       setCounts({ enquiries: a.length, albums: b.length, posts: c.length }),
     );
   }, [enq, alb, pos]);
+
   const cards = [
     [MessageSquare, "Enquiries", counts.enquiries, "enquiries" as Tab],
-    [ImageIcon, "Portfolio albums", counts.albums, "portfolio" as Tab],
-    [FileText, "Blog posts", counts.posts, "blog" as Tab],
-    [Globe, "Website content", "Control", "content" as Tab],
+    [ImageIcon, "Portfolio Albums", counts.albums, "portfolio" as Tab],
+    [FileText, "Blog Posts", counts.posts, "blog" as Tab],
+    [Briefcase, "Services", (customServices || defaultServices).length, "services" as Tab],
+    [MapPin, "Service Areas", (customLocations || defaultLocations).length, "locations" as Tab],
+    [Star, "Client Reviews", customReviews ? customReviews.length : 6, "reviews" as Tab],
+    [Globe, "Website Content", "Edit", "content" as Tab],
+    [SettingsIcon, "Studio Settings", "Lock", "settings" as Tab],
   ] as const;
+
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map(([Icon, title, n, t]) => (
         <button
           key={title}
           onClick={() => onGo(t)}
-          className="text-left border border-border p-8 bg-card hover:border-[color:var(--gold)] transition-colors"
+          className="text-left border border-border p-6 bg-card hover:border-[color:var(--gold)] transition-colors rounded-sm group"
         >
-          <Icon className="size-5 text-[color:var(--gold)]" />
-          <div className="mt-4 font-display text-4xl">{n}</div>
-          <div className="text-sm text-muted-foreground mt-1">{title}</div>
+          <Icon className="size-5 text-[color:var(--gold)] group-hover:scale-110 transition-transform" />
+          <div className="mt-4 font-display text-3xl md:text-4xl">{n}</div>
+          <div className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">{title}</div>
         </button>
       ))}
     </div>
@@ -255,58 +289,73 @@ function EnquiriesPanel() {
     load();
   }, [load]);
 
-  const setStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, status: string) => {
     await setStatusFn({ data: { id, status } });
     load();
   };
+
   const remove = async (id: string) => {
     if (!confirm("Delete this enquiry?")) return;
     await removeFn({ data: { id } });
     load();
   };
 
-  if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
-  if (!rows.length) return <Empty label="No enquiries yet." />;
+  if (loading) return <div className="text-sm text-muted-foreground">Loading enquiries…</div>;
 
   return (
-    <div className="space-y-4">
-      {rows.map((r) => (
-        <div key={r.id} className="border border-border p-6 bg-card">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="font-display text-xl">{r.name}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {new Date(r.created_at).toLocaleString()} · {r.service ?? "—"}
-                {r.event_date ? ` · ${r.event_date}` : ""}
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-sm text-muted-foreground">{rows.length} total enquiries</div>
+      </div>
+
+      {!rows.length && <Empty label="No enquiries received yet." />}
+
+      <div className="space-y-4">
+        {rows.map((r) => (
+          <div key={r.id} className="border border-border p-6 bg-card space-y-3 rounded-sm">
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div>
+                <div className="font-display text-xl">{r.name}</div>
+                <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-4">
+                  <span>✉ {r.email}</span>
+                  {r.phone && <span>📞 {r.phone}</span>}
+                  {r.service && <span>✦ {r.service}</span>}
+                  {r.event_date && <span>📅 Event: {r.event_date}</span>}
+                </div>
               </div>
-              <div className="mt-3 text-sm">
-                <a className="hover-gold" href={`mailto:${r.email}`}>{r.email}</a>
-                {r.phone && <> · <a className="hover-gold" href={`tel:${r.phone}`}>{r.phone}</a></>}
+              <div className="flex items-center gap-2">
+                <select
+                  value={r.status}
+                  onChange={(e) => updateStatus(r.id, e.target.value)}
+                  className="bg-transparent border border-border px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[color:var(--gold)]"
+                >
+                  <option value="new">New</option>
+                  <option value="contacted">Contacted</option>
+                  <option value="booked">Booked</option>
+                  <option value="archived">Archived</option>
+                </select>
+                <button
+                  onClick={() => remove(r.id)}
+                  className="p-1.5 border border-destructive/50 text-destructive hover:bg-destructive hover:text-white transition-colors"
+                >
+                  <Trash2 className="size-4" />
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={r.status}
-                onChange={(e) => setStatus(r.id, e.target.value)}
-                className="bg-transparent border border-border px-3 py-1.5 text-xs uppercase tracking-[0.2em]"
-              >
-                <option value="new">New</option>
-                <option value="contacted">Contacted</option>
-                <option value="closed">Closed</option>
-              </select>
-              <button onClick={() => remove(r.id)} className="p-2 text-muted-foreground hover:text-destructive">
-                <Trash2 className="size-4" />
-              </button>
+            <p className="text-sm text-muted-foreground leading-relaxed pt-2 border-t border-border/50">
+              "{r.message}"
+            </p>
+            <div className="text-[10px] text-muted-foreground/70 text-right">
+              Received: {new Date(r.created_at).toLocaleString()}
             </div>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground whitespace-pre-wrap">{r.message}</p>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
 
-/* ─────────── Media upload helper ─────────── */
+/* ─────────── Media Upload Hook ─────────── */
 
 function useMediaUpload() {
   const create = useServerFn(createMediaUploadUrl);
@@ -342,15 +391,18 @@ type Album = {
   slug: string;
   title: string;
   category: string;
-  description: string | null;
   cover_url: string | null;
+  description: string | null;
+  sort_order: number;
   published: boolean;
+};
+
+type AlbumImage = {
+  id: string;
+  url: string;
+  caption: string | null;
   sort_order: number;
 };
-type PortfolioImage = { id: string; album_id: string; url: string; caption: string | null; sort_order: number };
-
-const slugify = (s: string) =>
-  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 function PortfolioPanel() {
   const list = useServerFn(listAlbums);
@@ -360,6 +412,7 @@ function PortfolioPanel() {
   const load = useCallback(async () => {
     setAlbums((await list()) as Album[]);
   }, [list]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -381,10 +434,10 @@ function PortfolioPanel() {
       slug: "",
       title: "",
       category: "Weddings",
-      description: "",
       cover_url: "",
-      published: false,
+      description: "",
       sort_order: 0,
+      published: true,
     });
 
   return (
@@ -393,42 +446,27 @@ function PortfolioPanel() {
         <div className="text-sm text-muted-foreground">{albums.length} albums</div>
         <button
           onClick={newAlbum}
-          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] hover:bg-[color:var(--gold)] hover:text-black transition-colors"
+          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
         >
           <Plus className="size-4" /> New album
         </button>
       </div>
-      {!albums.length && <Empty label="No albums yet. Create your first." />}
-      <div className="grid gap-4 md:grid-cols-2">
+
+      {!albums.length && <Empty label="No portfolio albums yet. Create your first." />}
+
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {albums.map((a) => (
           <button
             key={a.id}
             onClick={() => setEditing(a)}
-            className="text-left border border-border bg-card hover:border-[color:var(--gold)] transition-colors flex gap-4 p-4"
+            className="text-left border border-border bg-card hover:border-[color:var(--gold)] p-4 flex flex-col justify-between transition-colors group"
           >
-            <div className="w-28 h-28 bg-black flex-shrink-0 overflow-hidden">
-              {a.cover_url ? (
-                <img src={a.cover_url} alt={a.title} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                  No cover
-                </div>
-              )}
+            <div className="aspect-[4/3] bg-black overflow-hidden relative w-full mb-3">
+              {a.cover_url && <img src={a.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-display text-lg truncate">{a.title}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {a.category} · /{a.slug}
-              </div>
-              <div
-                className={`mt-2 inline-block text-[10px] uppercase tracking-[0.22em] px-2 py-0.5 border ${
-                  a.published
-                    ? "border-[color:var(--gold)] text-[color:var(--gold)]"
-                    : "border-border text-muted-foreground"
-                }`}
-              >
-                {a.published ? "Published" : "Draft"}
-              </div>
+            <div>
+              <div className="font-display text-xl group-hover:text-[color:var(--gold)] transition-colors">{a.title}</div>
+              <div className="text-xs text-muted-foreground mt-1">{a.category} · /{a.slug}</div>
             </div>
           </button>
         ))}
@@ -446,15 +484,17 @@ function AlbumEditor({ album, onClose }: { album: Album; onClose: () => void }) 
   const upload = useMediaUpload();
 
   const [a, setA] = useState<Album>(album);
-  const [images, setImages] = useState<PortfolioImage[]>([]);
+  const [images, setImages] = useState<AlbumImage[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
   const isNew = !a.id;
 
   const loadImages = useCallback(async () => {
     if (!a.id) return;
-    setImages((await listImg({ data: { albumId: a.id } })) as PortfolioImage[]);
+    setImages((await listImg({ data: { albumId: a.id } })) as AlbumImage[]);
   }, [a.id, listImg]);
+
   useEffect(() => {
     loadImages();
   }, [loadImages]);
@@ -468,19 +508,19 @@ function AlbumEditor({ album, onClose }: { album: Album; onClose: () => void }) 
         slug,
         title: a.title,
         category: a.category,
-        description: a.description,
         cover_url: a.cover_url,
-        published: a.published,
+        description: a.description,
         sort_order: a.sort_order,
+        published: a.published,
       },
     });
     setSaving(false);
     if (!r.ok) return alert(r.error);
-    if (isNew) setA({ ...a, id: r.id, slug });
+    if (isNew) onClose();
   };
 
   const remove = async () => {
-    if (!confirm("Delete this album and its images?")) return;
+    if (!confirm("Delete this album?")) return;
     await removeFn({ data: { id: a.id } });
     onClose();
   };
@@ -521,7 +561,7 @@ function AlbumEditor({ album, onClose }: { album: Album; onClose: () => void }) 
     <div>
       <button
         onClick={onClose}
-        className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-[color:var(--gold)] mb-6"
+        className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-[color:var(--gold)] mb-6 font-medium"
       >
         ← Back to albums
       </button>
@@ -538,9 +578,9 @@ function AlbumEditor({ album, onClose }: { album: Album; onClose: () => void }) 
           <select
             value={a.category}
             onChange={(e) => setA({ ...a, category: e.target.value })}
-            className="bg-transparent border-b border-border py-3"
+            className="bg-transparent border-b border-border py-3 text-sm"
           >
-            {["Weddings", "Portraits", "Baby", "Family", "Fashion", "Commercial", "Corporate", "Events", "Videography"].map((c) => (
+            {["Weddings", "Portraits", "Baby", "Family", "Fashion", "Commercial", "Corporate", "Events"].map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
@@ -557,7 +597,7 @@ function AlbumEditor({ album, onClose }: { album: Album; onClose: () => void }) 
             value={a.description ?? ""}
             onChange={(e) => setA({ ...a, description: e.target.value })}
             rows={3}
-            className="mt-2 w-full bg-transparent border-b border-border py-3"
+            className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
           />
         </div>
         <div className="md:col-span-2">
@@ -565,7 +605,7 @@ function AlbumEditor({ album, onClose }: { album: Album; onClose: () => void }) 
           <div className="mt-3 flex items-center gap-4">
             {a.cover_url && <img src={a.cover_url} alt="" className="w-32 h-32 object-cover bg-black" />}
             <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
-              <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload"}
+              <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload cover"}
               <input
                 type="file"
                 accept="image/*"
@@ -575,23 +615,15 @@ function AlbumEditor({ album, onClose }: { album: Album; onClose: () => void }) 
             </label>
           </div>
         </div>
-        <label className="md:col-span-2 flex items-center gap-3 text-sm">
-          <input
-            type="checkbox"
-            checked={a.published}
-            onChange={(e) => setA({ ...a, published: e.target.checked })}
-          />
-          Published
-        </label>
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
         <button
           onClick={save}
           disabled={saving}
-          className="bg-foreground text-background px-6 py-3 text-xs uppercase tracking-[0.22em] hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
+          className="bg-foreground text-background px-6 py-3 text-xs uppercase tracking-[0.22em] hover:bg-[color:var(--gold)] hover:text-black transition-colors font-medium disabled:opacity-50"
         >
-          {saving ? "Saving…" : isNew ? "Create album" : "Save"}
+          {saving ? "Saving…" : isNew ? "Create album" : "Save Album"}
         </button>
         {!isNew && (
           <button
@@ -621,7 +653,7 @@ function AlbumEditor({ album, onClose }: { album: Album; onClose: () => void }) 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {images.map((im) => (
               <div key={im.id} className="relative group aspect-square bg-black">
-                <img src={im.url} alt={im.caption ?? ""} className="w-full h-full object-cover" />
+                <img src={im.url} alt="" className="w-full h-full object-cover" />
                 <button
                   onClick={() => removeImage(im.id)}
                   className="absolute top-2 right-2 bg-black/70 text-white p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -660,6 +692,7 @@ function BlogPanel() {
   const load = useCallback(async () => {
     setPosts((await list()) as Post[]);
   }, [list]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -695,18 +728,20 @@ function BlogPanel() {
         <div className="text-sm text-muted-foreground">{posts.length} posts</div>
         <button
           onClick={newPost}
-          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] hover:bg-[color:var(--gold)] hover:text-black transition-colors"
+          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
         >
           <Plus className="size-4" /> New post
         </button>
       </div>
+
       {!posts.length && <Empty label="No posts yet. Write your first." />}
+
       <div className="space-y-3">
         {posts.map((p) => (
           <button
             key={p.id}
             onClick={() => setEditing(p)}
-            className="w-full text-left border border-border bg-card hover:border-[color:var(--gold)] p-4 flex gap-4 transition-colors"
+            className="w-full text-left border border-border bg-card hover:border-[color:var(--gold)] p-4 flex gap-4 transition-colors rounded-sm"
           >
             <div className="w-24 h-24 bg-black flex-shrink-0 overflow-hidden">
               {p.cover_url && <img src={p.cover_url} alt="" className="w-full h-full object-cover" />}
@@ -783,7 +818,7 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
     <div>
       <button
         onClick={onClose}
-        className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-[color:var(--gold)] mb-6"
+        className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-[color:var(--gold)] mb-6 font-medium"
       >
         ← Back to posts
       </button>
@@ -798,7 +833,7 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
             value={p.excerpt ?? ""}
             onChange={(e) => setP({ ...p, excerpt: e.target.value })}
             rows={2}
-            className="mt-2 w-full bg-transparent border-b border-border py-3"
+            className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
           />
         </div>
         <div className="md:col-span-2">
@@ -821,26 +856,18 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
           <textarea
             value={p.content}
             onChange={(e) => setP({ ...p, content: e.target.value })}
-            rows={18}
+            rows={14}
             className="mt-2 w-full bg-transparent border border-border p-4 font-mono text-sm"
           />
         </div>
-        <label className="md:col-span-2 flex items-center gap-3 text-sm">
-          <input
-            type="checkbox"
-            checked={p.published}
-            onChange={(e) => setP({ ...p, published: e.target.checked })}
-          />
-          Published
-        </label>
       </div>
       <div className="mt-8 flex flex-wrap gap-3">
         <button
           onClick={save}
           disabled={saving}
-          className="bg-foreground text-background px-6 py-3 text-xs uppercase tracking-[0.22em] hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
+          className="bg-foreground text-background px-6 py-3 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
         >
-          {saving ? "Saving…" : isNew ? "Create post" : "Save"}
+          {saving ? "Saving…" : isNew ? "Create post" : "Save Post"}
         </button>
         {!isNew && (
           <button
@@ -850,6 +877,554 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
             Delete
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────── Services Panel ─────────── */
+
+function ServicesPanel() {
+  const { customServices, refresh } = useSiteContent();
+  const updateSvc = useServerFn(updateCustomServices);
+  const upload = useMediaUpload();
+
+  const [items, setItems] = useState<Service[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    setItems((customServices && customServices.length > 0 ? customServices : defaultServices) as Service[]);
+  }, [customServices]);
+
+  const saveAll = async (newItems: Service[]) => {
+    setSaving(true);
+    try {
+      const res = await updateSvc({ data: { services: newItems } });
+      if (res.ok) {
+        await refresh();
+      } else {
+        alert("Failed to save services.");
+      }
+    } catch (e) {
+      alert("Error saving services.");
+    }
+    setSaving(false);
+  };
+
+  const addItem = () => {
+    const newSvc: Service = {
+      slug: `new-service-${Date.now()}`,
+      title: "New Service",
+      category: "Photography",
+      short: "Short tagline for new service.",
+      hero: defaultServices[0].hero,
+      gallery: [defaultServices[0].hero],
+      intro: "Detailed description of the new service.",
+      features: ["Professional Lighting", "4K Video & Cinema Lenses", "Full Crew Dispatch"],
+      faqs: [{ q: "How do we book this service?", a: "Contact us via the form or WhatsApp." }],
+    };
+    const updated = [newSvc, ...items];
+    setItems(updated);
+    setEditingIndex(0);
+  };
+
+  const removeItem = async (index: number) => {
+    if (!confirm("Delete this service?")) return;
+    const updated = items.filter((_, i) => i !== index);
+    setItems(updated);
+    if (editingIndex === index) setEditingIndex(null);
+    await saveAll(updated);
+  };
+
+  const uploadHero = async (file: File, index: number) => {
+    setUploading(true);
+    try {
+      const url = await upload(file);
+      const updated = [...items];
+      updated[index] = { ...updated[index], hero: url };
+      setItems(updated);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Hero upload failed");
+    }
+    setUploading(false);
+  };
+
+  if (editingIndex !== null && items[editingIndex]) {
+    const s = items[editingIndex];
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => setEditingIndex(null)}
+          className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-[color:var(--gold)] font-medium"
+        >
+          ← Back to Services List
+        </button>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input label="Title" value={s.title} onChange={(v) => {
+            const updated = [...items];
+            updated[editingIndex] = { ...s, title: v, slug: slugify(v) };
+            setItems(updated);
+          }} />
+          <Input label="Slug (URL)" value={s.slug} onChange={(v) => {
+            const updated = [...items];
+            updated[editingIndex] = { ...s, slug: v };
+            setItems(updated);
+          }} />
+
+          <div className="flex flex-col gap-2">
+            <label className="kbd-eyebrow text-muted-foreground">Category</label>
+            <select
+              value={s.category}
+              onChange={(e) => {
+                const updated = [...items];
+                updated[editingIndex] = { ...s, category: e.target.value as any };
+                setItems(updated);
+              }}
+              className="bg-transparent border-b border-border py-3 text-sm"
+            >
+              {["Photography", "Videography", "Events", "Commercial"].map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <Input label="Short Description (Card Subtitle)" value={s.short} onChange={(v) => {
+              const updated = [...items];
+              updated[editingIndex] = { ...s, short: v };
+              setItems(updated);
+            }} />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Full Intro Text</label>
+            <textarea
+              value={s.intro}
+              onChange={(e) => {
+                const updated = [...items];
+                updated[editingIndex] = { ...s, intro: e.target.value };
+                setItems(updated);
+              }}
+              rows={4}
+              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Hero Image Banner</label>
+            <div className="mt-3 flex items-center gap-4">
+              {s.hero && <img src={s.hero} alt="" className="w-32 h-32 object-cover bg-black" />}
+              <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
+                <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload Hero Banner"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && uploadHero(e.target.files[0], editingIndex)}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-6 flex flex-wrap gap-4">
+          <button
+            onClick={() => {
+              saveAll(items);
+              setEditingIndex(null);
+            }}
+            disabled={saving}
+            className="bg-foreground text-background px-8 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
+          >
+            {saving ? "Saving…" : "Save Service"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-sm text-muted-foreground">{items.length} total services</div>
+        <button
+          onClick={addItem}
+          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
+        >
+          <Plus className="size-4" /> Add New Service
+        </button>
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((s, idx) => (
+          <div key={idx} className="border border-border bg-card p-5 rounded-sm flex flex-col justify-between group">
+            <div>
+              <div className="aspect-[16/10] bg-black overflow-hidden mb-4 relative">
+                <img src={s.hero} alt={s.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                <span className="absolute top-2 left-2 bg-black/80 text-[10px] uppercase tracking-widest text-[color:var(--gold)] px-2 py-1">
+                  {s.category}
+                </span>
+              </div>
+              <h3 className="font-display text-xl">{s.title}</h3>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{s.short}</p>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-border flex items-center justify-between">
+              <button
+                onClick={() => setEditingIndex(idx)}
+                className="text-xs uppercase tracking-widest text-[color:var(--gold)] font-medium hover:underline"
+              >
+                Edit Details →
+              </button>
+              <button
+                onClick={() => removeItem(idx)}
+                className="text-destructive hover:text-red-400 p-1"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────── Locations Panel ─────────── */
+
+function LocationsPanel() {
+  const { customLocations, refresh } = useSiteContent();
+  const updateLoc = useServerFn(updateCustomLocations);
+  const upload = useMediaUpload();
+
+  const [items, setItems] = useState<Location[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    setItems((customLocations && customLocations.length > 0 ? customLocations : defaultLocations) as Location[]);
+  }, [customLocations]);
+
+  const saveAll = async (newItems: Location[]) => {
+    setSaving(true);
+    try {
+      const res = await updateLoc({ data: { locations: newItems } });
+      if (res.ok) {
+        await refresh();
+      } else {
+        alert("Failed to save locations.");
+      }
+    } catch (e) {
+      alert("Error saving locations.");
+    }
+    setSaving(false);
+  };
+
+  const addItem = () => {
+    const newLoc: Location = {
+      slug: `new-location-${Date.now()}`,
+      name: "New Destination",
+      region: "Destination Region",
+      title: "Luxury Wedding Photography in New Destination",
+      tagline: "Capturing love stories across breathtaking landscapes.",
+      intro: "Detailed overview of photography services in this region.",
+      heroImage: defaultLocations[0].heroImage,
+      highlights: ["Experienced local crew", "4K Drone Filming", "High-Fashion Aesthetics"],
+      popularVenues: [{ name: "The Grand Resort", type: "Luxury Estate", desc: "Panoramic view of hills and gardens." }],
+      servicesOffered: ["Full Wedding Coverage", "Pre-Wedding Portraits", "Cinematic Highlights"],
+      faqs: [{ q: "Do you charge travel fees?", a: "All travel and crew logistics are included in our custom destination quote." }],
+      gallery: [defaultLocations[0].heroImage],
+    };
+    const updated = [newLoc, ...items];
+    setItems(updated);
+    setEditingIndex(0);
+  };
+
+  const removeItem = async (index: number) => {
+    if (!confirm("Delete this location area?")) return;
+    const updated = items.filter((_, i) => i !== index);
+    setItems(updated);
+    if (editingIndex === index) setEditingIndex(null);
+    await saveAll(updated);
+  };
+
+  const uploadHero = async (file: File, index: number) => {
+    setUploading(true);
+    try {
+      const url = await upload(file);
+      const updated = [...items];
+      updated[index] = { ...updated[index], heroImage: url };
+      setItems(updated);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Hero upload failed");
+    }
+    setUploading(false);
+  };
+
+  if (editingIndex !== null && items[editingIndex]) {
+    const l = items[editingIndex];
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => setEditingIndex(null)}
+          className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-[color:var(--gold)] font-medium"
+        >
+          ← Back to Locations List
+        </button>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input label="Location Name (e.g. Jaipur)" value={l.name} onChange={(v) => {
+            const updated = [...items];
+            updated[editingIndex] = { ...l, name: v, slug: slugify(v) };
+            setItems(updated);
+          }} />
+          <Input label="Region Tag (e.g. Rajasthan · Pink City)" value={l.region} onChange={(v) => {
+            const updated = [...items];
+            updated[editingIndex] = { ...l, region: v };
+            setItems(updated);
+          }} />
+          <div className="md:col-span-2">
+            <Input label="Page Title (h1)" value={l.title} onChange={(v) => {
+              const updated = [...items];
+              updated[editingIndex] = { ...l, title: v };
+              setItems(updated);
+            }} />
+          </div>
+          <div className="md:col-span-2">
+            <Input label="Tagline" value={l.tagline} onChange={(v) => {
+              const updated = [...items];
+              updated[editingIndex] = { ...l, tagline: v };
+              setItems(updated);
+            }} />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Intro Narrative</label>
+            <textarea
+              value={l.intro}
+              onChange={(e) => {
+                const updated = [...items];
+                updated[editingIndex] = { ...l, intro: e.target.value };
+                setItems(updated);
+              }}
+              rows={4}
+              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Hero Image Banner</label>
+            <div className="mt-3 flex items-center gap-4">
+              {l.heroImage && <img src={l.heroImage} alt="" className="w-32 h-32 object-cover bg-black" />}
+              <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
+                <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload Hero Banner"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && uploadHero(e.target.files[0], editingIndex)}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-6 flex flex-wrap gap-4">
+          <button
+            onClick={() => {
+              saveAll(items);
+              setEditingIndex(null);
+            }}
+            disabled={saving}
+            className="bg-foreground text-background px-8 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
+          >
+            {saving ? "Saving…" : "Save Location"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-sm text-muted-foreground">{items.length} total service areas</div>
+        <button
+          onClick={addItem}
+          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
+        >
+          <Plus className="size-4" /> Add Service Area
+        </button>
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((l, idx) => (
+          <div key={idx} className="border border-border bg-card p-5 rounded-sm flex flex-col justify-between group">
+            <div>
+              <div className="aspect-[16/10] bg-black overflow-hidden mb-4 relative">
+                <img src={l.heroImage} alt={l.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                <span className="absolute top-2 left-2 bg-black/80 text-[10px] uppercase tracking-widest text-[color:var(--gold)] px-2 py-1 flex items-center gap-1">
+                  <MapPin className="size-3" /> {l.region}
+                </span>
+              </div>
+              <h3 className="font-display text-xl">{l.name}</h3>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{l.tagline}</p>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-border flex items-center justify-between">
+              <button
+                onClick={() => setEditingIndex(idx)}
+                className="text-xs uppercase tracking-widest text-[color:var(--gold)] font-medium hover:underline"
+              >
+                Edit Location →
+              </button>
+              <button
+                onClick={() => removeItem(idx)}
+                className="text-destructive hover:text-red-400 p-1"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────── Reviews Panel ─────────── */
+
+type ReviewItem = {
+  n: string;
+  d: string;
+  q: string;
+  rating?: number;
+};
+
+const defaultReviewsList: ReviewItem[] = [
+  { n: "Rohan Mehta", d: "3 weeks ago", q: "From consultation to delivery, everything was flawless. The final film brought us to tears.", rating: 5 },
+  { n: "Nisha Rao", d: "2 months ago", q: "Our maternity shoot was intimate and beautifully lit. The team made me feel comfortable throughout.", rating: 5 },
+  { n: "Ananya Kapoor", d: "1 month ago", q: "They photographed both my wedding and my daughter's first birthday. A studio you trust for a lifetime.", rating: 5 },
+  { n: "Vikram Enterprises", d: "5 weeks ago", q: "Our go-to for every campaign. Consistent, calm, and consistently premium.", rating: 5 },
+  { n: "Simran & Arjun", d: "1 week ago", q: "The album is a masterpiece. Every page feels like a page from a coffee-table book.", rating: 5 },
+  { n: "Devika Nair", d: "6 months ago", q: "The team travelled to Bali for our destination wedding and delivered beyond expectations.", rating: 5 },
+];
+
+function ReviewsPanel() {
+  const { customReviews, refresh } = useSiteContent();
+  const updateRev = useServerFn(updateCustomReviews);
+
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setReviews((customReviews && customReviews.length > 0 ? customReviews : defaultReviewsList) as ReviewItem[]);
+  }, [customReviews]);
+
+  const saveAll = async (newReviews: ReviewItem[]) => {
+    setSaving(true);
+    try {
+      const res = await updateRev({ data: { reviews: newReviews } });
+      if (res.ok) {
+        await refresh();
+      } else {
+        alert("Failed to save reviews.");
+      }
+    } catch (e) {
+      alert("Error saving reviews.");
+    }
+    setSaving(false);
+  };
+
+  const addReview = () => {
+    const newItem: ReviewItem = {
+      n: "New Client",
+      d: "Just now",
+      q: "Exceptional quality and incredible service.",
+      rating: 5,
+    };
+    const updated = [newItem, ...reviews];
+    setReviews(updated);
+  };
+
+  const updateItem = (index: number, updatedItem: ReviewItem) => {
+    const updated = [...reviews];
+    updated[index] = updatedItem;
+    setReviews(updated);
+  };
+
+  const removeItem = async (index: number) => {
+    if (!confirm("Delete this review?")) return;
+    const updated = reviews.filter((_, i) => i !== index);
+    setReviews(updated);
+    await saveAll(updated);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-sm text-muted-foreground">{reviews.length} client reviews</div>
+        <div className="flex gap-3">
+          <button
+            onClick={addReview}
+            className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:border-[color:var(--gold)]"
+          >
+            <Plus className="size-4" /> Add Review
+          </button>
+          <button
+            onClick={() => saveAll(reviews)}
+            disabled={saving}
+            className="bg-foreground text-background px-6 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
+          >
+            {saving ? "Saving…" : "Save All Reviews"}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {reviews.map((r, idx) => (
+          <div key={idx} className="border border-border p-6 bg-card rounded-sm space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Input label="Client / Couple Name" value={r.n} onChange={(v) => updateItem(idx, { ...r, n: v })} />
+              <Input label="Date String (e.g. 2 weeks ago)" value={r.d} onChange={(v) => updateItem(idx, { ...r, d: v })} />
+              <div className="flex flex-col gap-2">
+                <label className="kbd-eyebrow text-muted-foreground">Star Rating</label>
+                <select
+                  value={r.rating ?? 5}
+                  onChange={(e) => updateItem(idx, { ...r, rating: Number(e.target.value) })}
+                  className="bg-transparent border-b border-border py-3 text-sm"
+                >
+                  {[5, 4, 3, 2, 1].map((st) => (
+                    <option key={st} value={st}>{st} Stars</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="kbd-eyebrow text-muted-foreground">Testimonial Quote</label>
+              <textarea
+                value={r.q}
+                onChange={(e) => updateItem(idx, { ...r, q: e.target.value })}
+                rows={2}
+                className="mt-2 w-full bg-transparent border-b border-border py-2 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => removeItem(idx)}
+                className="text-xs text-destructive hover:underline flex items-center gap-1"
+              >
+                <Trash2 className="size-3.5" /> Remove Review
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -897,7 +1472,7 @@ function SettingsPanel() {
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
           placeholder="Current password"
-          className="w-full bg-transparent border-b border-border py-3 focus:outline-none focus:border-[color:var(--gold)]"
+          className="w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
         />
         <input
           type="password"
@@ -906,7 +1481,7 @@ function SettingsPanel() {
           value={next}
           onChange={(e) => setNext(e.target.value)}
           placeholder="New password (min 6 chars)"
-          className="w-full bg-transparent border-b border-border py-3 focus:outline-none focus:border-[color:var(--gold)]"
+          className="w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
         />
         <input
           type="password"
@@ -915,7 +1490,7 @@ function SettingsPanel() {
           value={confirmPw}
           onChange={(e) => setConfirmPw(e.target.value)}
           placeholder="Confirm new password"
-          className="w-full bg-transparent border-b border-border py-3 focus:outline-none focus:border-[color:var(--gold)]"
+          className="w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
         />
         {msg && (
           <div className={`text-xs ${msg.ok ? "text-[color:var(--gold)]" : "text-destructive"}`}>{msg.text}</div>
@@ -923,7 +1498,7 @@ function SettingsPanel() {
         <button
           type="submit"
           disabled={busy}
-          className="bg-foreground text-background px-6 py-3 text-xs uppercase tracking-[0.22em] hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
+          className="bg-foreground text-background px-6 py-3 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
         >
           {busy ? "Updating…" : "Update password"}
         </button>
@@ -980,7 +1555,7 @@ function ContentPanel() {
   return (
     <form onSubmit={handleSave} className="space-y-12 max-w-4xl">
       {/* Identity */}
-      <div className="border border-border p-8 bg-card space-y-6">
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
         <h2 className="font-display text-2xl border-b border-border pb-3 text-[color:var(--gold)]">Identity & Logo</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <Input label="Brand Name" value={formData.name} onChange={v => setFormData({ ...formData, name: v })} />
@@ -1008,8 +1583,8 @@ function ContentPanel() {
       </div>
 
       {/* Hero Page Copy */}
-      <div className="border border-border p-8 bg-card space-y-6">
-        <h2 className="font-display text-2xl border-b border-border pb-3 text-[color:var(--gold)]">Hero Page Copy</h2>
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h2 className="font-display text-2xl border-b border-border pb-3 text-[color:var(--gold)]">Home Hero Copy</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <Input label="Title (Part 1)" value={formData.hero.title_part1} onChange={v => setFormData({ ...formData, hero: { ...formData.hero, title_part1: v } })} />
           <Input label="Title (Part 2 - Golden/Italic)" value={formData.hero.title_part2} onChange={v => setFormData({ ...formData, hero: { ...formData.hero, title_part2: v } })} />
@@ -1019,14 +1594,14 @@ function ContentPanel() {
               value={formData.hero.subtitle}
               onChange={e => setFormData({ ...formData, hero: { ...formData.hero, subtitle: e.target.value } })}
               rows={3}
-              className="mt-2 w-full bg-transparent border-b border-border py-3 focus:outline-none focus:border-[color:var(--gold)]"
+              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
             />
           </div>
         </div>
       </div>
 
       {/* Contact Details */}
-      <div className="border border-border p-8 bg-card space-y-6">
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
         <h2 className="font-display text-2xl border-b border-border pb-3 text-[color:var(--gold)]">Contact Details</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <Input label="Phone Display" value={formData.phone} onChange={v => setFormData({ ...formData, phone: v })} />
@@ -1040,7 +1615,7 @@ function ContentPanel() {
       </div>
 
       {/* Social Media Links */}
-      <div className="border border-border p-8 bg-card space-y-6">
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
         <h2 className="font-display text-2xl border-b border-border pb-3 text-[color:var(--gold)]">Social Media Links</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <Input label="Instagram URL" value={formData.social.instagram} onChange={v => setFormData({ ...formData, social: { ...formData.social, instagram: v } })} />
@@ -1051,7 +1626,7 @@ function ContentPanel() {
       </div>
 
       {/* Statistics */}
-      <div className="border border-border p-8 bg-card space-y-6">
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
         <h2 className="font-display text-2xl border-b border-border pb-3 text-[color:var(--gold)]">Studio Statistics</h2>
         <div className="grid gap-6 md:grid-cols-3">
           <Input label="Projects (e.g. 4,800+)" value={formData.stats.projects} onChange={v => setFormData({ ...formData, stats: { ...formData.stats, projects: v } })} />
@@ -1081,7 +1656,16 @@ function ContentPanel() {
   );
 }
 
-/* ─────────── Shared ─────────── */
+/* ─────────── Shared Helpers ─────────── */
+
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 function Input({
   label,
@@ -1104,7 +1688,7 @@ function Input({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-transparent border-b border-border py-3 focus:outline-none focus:border-[color:var(--gold)]"
+        className="bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
       />
     </div>
   );
@@ -1112,7 +1696,7 @@ function Input({
 
 function Empty({ label }: { label: string }) {
   return (
-    <div className="border border-border p-16 text-center text-sm text-muted-foreground bg-secondary/40">
+    <div className="border border-border p-16 text-center text-sm text-muted-foreground bg-secondary/40 rounded-sm">
       {label}
     </div>
   );

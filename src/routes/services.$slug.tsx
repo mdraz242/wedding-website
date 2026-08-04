@@ -34,13 +34,15 @@ export const Route = createFileRoute("/services/$slug")({
 });
 
 function ServicePage() {
-  const s = Route.useLoaderData() as Service;
-  const { settings } = useSiteContent();
+  const initialSvc = Route.useLoaderData() as Service;
+  const { settings, customServices } = useSiteContent();
+  const s = (customServices?.find((x) => x.slug.toLowerCase() === initialSvc.slug.toLowerCase()) || initialSvc) as Service;
   const whatsappUrl = settings.whatsapp.startsWith("http")
     ? settings.whatsapp
     : `https://wa.me/${settings.whatsapp.replace(/[^0-9]/g, "")}`;
+  const allServices = (customServices && customServices.length > 0 ? customServices : services) as Service[];
   const related: Service[] = (s.related ?? [])
-    .map((r) => services.find((x) => x.slug === r))
+    .map((r) => allServices.find((x) => x.slug === r))
     .filter((x): x is Service => !!x);
 
   return (
@@ -48,10 +50,10 @@ function ServicePage() {
       <SiteNav />
 
       {/* Hero */}
-      <section className="relative h-[80svh] min-h-[560px] overflow-hidden">
+      <section className="relative min-h-[80svh] min-h-[620px] overflow-hidden flex flex-col justify-end">
         <img src={s.hero} alt={s.title} className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/80" />
-        <div className="relative container-lux h-full flex flex-col justify-end pb-16 pt-32 text-white">
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/90" />
+        <div className="relative container-lux w-full h-full flex flex-col justify-end pb-16 pt-36 md:pt-44 text-white z-10">
           <nav className="text-xs uppercase tracking-[0.22em] text-white/60">
             <Link to="/" className="hover:text-white">Home</Link> · <Link to="/services" className="hover:text-white">Services</Link> · <span className="text-[color:var(--gold)]">{s.title}</span>
           </nav>

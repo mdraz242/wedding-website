@@ -5,6 +5,7 @@ import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
 import { img, gallery } from "@/lib/site";
 import { featured, services } from "@/data/services";
+import { locations } from "@/data/locations";
 import heroVideoNew from "@/assets/kamal-hero-v2.mp4.asset.json";
 import heroVideoMain from "@/assets/kamal-hero.mp4.asset.json";
 import heroVideo1 from "@/assets/hero-1.mp4.asset.json";
@@ -440,7 +441,6 @@ function Process() {
 
 /* ---------- Service areas ---------- */
 function ServiceAreas() {
-  const cities = ["Chandigarh", "Mohali", "Panchkula", "Ludhiana", "Delhi", "Mumbai", "Goa", "Jaipur", "Udaipur", "Jalandhar", "Amritsar", "Destination · Worldwide"];
   return (
     <section className="py-24 md:py-32">
       <div className="container-lux grid md:grid-cols-12 gap-12 items-center reveal">
@@ -451,11 +451,29 @@ function ServiceAreas() {
             Headquartered in Chandigarh, working across India and the world.
             Destination-ready with a self-contained crew.
           </p>
+          <div className="mt-6">
+            <Link
+              to="/locations"
+              className="text-xs uppercase tracking-[0.22em] text-[color:var(--gold)] hover:underline inline-flex items-center gap-1.5 font-medium"
+            >
+              Explore all locations <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
         </div>
         <ul className="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 text-sm">
-          {cities.map((c) => (
-            <li key={c} className="flex items-center gap-2 py-2 border-b border-border">
-              <MapPin className="size-3.5 text-[color:var(--gold)]" /> {c}
+          {locations.map((loc) => (
+            <li key={loc.slug}>
+              <Link
+                to="/locations/$slug"
+                params={{ slug: loc.slug }}
+                className="group flex items-center justify-between py-2.5 border-b border-border hover:border-[color:var(--gold)] text-foreground hover:text-[color:var(--gold)] transition-all duration-200"
+              >
+                <span className="flex items-center gap-2 font-medium">
+                  <MapPin className="size-3.5 text-[color:var(--gold)] shrink-0 group-hover:scale-110 transition-transform" />
+                  {loc.name}
+                </span>
+                <ArrowUpRight className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-[color:var(--gold)] transition-all shrink-0" />
+              </Link>
             </li>
           ))}
         </ul>

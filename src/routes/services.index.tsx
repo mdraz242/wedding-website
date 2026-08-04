@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
-import { grouped } from "@/data/services";
+import { services as defaultServices, type Service } from "@/data/services";
+import { useSiteContent } from "@/hooks/useSiteContent";
 
 export const Route = createFileRoute("/services/")({
   head: () => ({
@@ -15,9 +16,18 @@ export const Route = createFileRoute("/services/")({
 });
 
 function ServicesIndex() {
-  const g = grouped();
+  const { customServices } = useSiteContent();
+  const list = (customServices && customServices.length > 0 ? customServices : defaultServices) as Service[];
+
+  const grouped = list.reduce<Record<string, Service[]>>((acc, s) => {
+    const cat = s.category || "Photography";
+    acc[cat] = acc[cat] || [];
+    acc[cat].push(s);
+    return acc;
+  }, {});
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
       <section className="pt-40 pb-20 border-b border-border">
         <div className="container-lux">
@@ -29,17 +39,17 @@ function ServicesIndex() {
         </div>
       </section>
 
-      {(Object.keys(g) as (keyof typeof g)[]).map((cat) => (
+      {Object.keys(grouped).map((cat) => (
         <section key={cat} className="py-20 border-b border-border">
           <div className="container-lux">
             <div className="flex items-baseline justify-between mb-10">
               <h2 className="font-display text-3xl md:text-4xl">{cat}</h2>
-              <div className="kbd-eyebrow text-muted-foreground">{g[cat].length} services</div>
+              <div className="kbd-eyebrow text-muted-foreground">{grouped[cat].length} services</div>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {g[cat].map((s) => (
+              {grouped[cat].map((s) => (
                 <Link key={s.slug} to="/services/$slug" params={{ slug: s.slug }} className="group block">
-                  <div className="aspect-[4/5] overflow-hidden bg-black">
+                  <div className="aspect-[4/5] overflow-hidden bg-black rounded-sm">
                     <img src={s.hero} alt={s.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   </div>
                   <div className="mt-4 flex items-start justify-between gap-4">

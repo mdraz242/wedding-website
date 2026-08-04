@@ -474,3 +474,97 @@ export const updateAdminSiteSettings = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/* ─────────── Custom Services, Locations & Reviews ─────────── */
+
+let mockCustomServices: any = null;
+let mockCustomLocations: any = null;
+let mockCustomReviews: any = null;
+
+export const getCustomServices = createServerFn({ method: "GET" }).handler(async () => {
+  if (isMockMode) {
+    return { services: mockCustomServices };
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("site_content")
+    .select("value")
+    .eq("key", "custom_services")
+    .maybeSingle();
+  return { services: data?.value || null };
+});
+
+export const updateCustomServices = createServerFn({ method: "POST" })
+  .inputValidator((d: { services: any }) => d)
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    if (isMockMode) {
+      mockCustomServices = data.services;
+      return { ok: true as const };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("site_content")
+      .upsert({ key: "custom_services", value: data.services, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const };
+  });
+
+export const getCustomLocations = createServerFn({ method: "GET" }).handler(async () => {
+  if (isMockMode) {
+    return { locations: mockCustomLocations };
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("site_content")
+    .select("value")
+    .eq("key", "custom_locations")
+    .maybeSingle();
+  return { locations: data?.value || null };
+});
+
+export const updateCustomLocations = createServerFn({ method: "POST" })
+  .inputValidator((d: { locations: any }) => d)
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    if (isMockMode) {
+      mockCustomLocations = data.locations;
+      return { ok: true as const };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("site_content")
+      .upsert({ key: "custom_locations", value: data.locations, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const };
+  });
+
+export const getCustomReviews = createServerFn({ method: "GET" }).handler(async () => {
+  if (isMockMode) {
+    return { reviews: mockCustomReviews };
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("site_content")
+    .select("value")
+    .eq("key", "custom_reviews")
+    .maybeSingle();
+  return { reviews: data?.value || null };
+});
+
+export const updateCustomReviews = createServerFn({ method: "POST" })
+  .inputValidator((d: { reviews: any }) => d)
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    if (isMockMode) {
+      mockCustomReviews = data.reviews;
+      return { ok: true as const };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("site_content")
+      .upsert({ key: "custom_reviews", value: data.reviews, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const };
+  });
+
+

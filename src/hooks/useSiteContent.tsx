@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { site as defaultSite } from "@/lib/site";
 import brandLogo from "@/assets/logo.png";
-import { getSiteSettings } from "@/lib/admin.functions";
-
+import { getSiteSettings, getCustomServices, getCustomLocations, getCustomReviews } from "@/lib/admin.functions";
 
 export interface SiteSettings {
   name: string;
@@ -70,18 +69,27 @@ export const defaultSettings: SiteSettings = {
 
 interface SiteContentContextType {
   settings: SiteSettings;
+  customServices: any[] | null;
+  customLocations: any[] | null;
+  customReviews: any[] | null;
   refresh: () => Promise<void>;
   loading: boolean;
 }
 
 const SiteContentContext = createContext<SiteContentContextType>({
   settings: defaultSettings,
+  customServices: null,
+  customLocations: null,
+  customReviews: null,
   refresh: async () => {},
   loading: false,
 });
 
 export function SiteContentProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<SiteSettings>(defaultSettings);
+  const [customServices, setCustomServices] = useState<any[] | null>(null);
+  const [customLocations, setCustomLocations] = useState<any[] | null>(null);
+  const [customReviews, setCustomReviews] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = useCallback(async () => {
@@ -91,10 +99,15 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
     }
 
     try {
-      const { settings: val } = await getSiteSettings();
+      const [sRes, svcRes, locRes, revRes] = await Promise.all([
+        getSiteSettings(),
+        getCustomServices(),
+        getCustomLocations(),
+        getCustomReviews(),
+      ]);
 
-      if (val) {
-        // Deep merge helper
+      if (sRes?.settings) {
+        const val = sRes.settings;
         const merged: SiteSettings = {
           ...defaultSettings,
           ...val,
@@ -113,8 +126,12 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
         };
         setSettings(merged);
       }
+
+      if (svcRes?.services) setCustomServices(svcRes.services);
+      if (locRes?.locations) setCustomLocations(locRes.locations);
+      if (revRes?.reviews) setCustomReviews(revRes.reviews);
     } catch (err) {
-      console.error("Failed to parse or fetch settings:", err);
+      console.error("Failed to parse or fetch site settings:", err);
     } finally {
       setLoading(false);
     }
@@ -125,7 +142,16 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
   }, [fetchSettings]);
 
   return (
-    <SiteContentContext.Provider value={{ settings, refresh: fetchSettings, loading }}>
+    <SiteContentContext.Provider
+      value={{
+        settings,
+        customServices,
+        customLocations,
+        customReviews,
+        refresh: fetchSettings,
+        loading,
+      }}
+    >
       {children}
     </SiteContentContext.Provider>
   );

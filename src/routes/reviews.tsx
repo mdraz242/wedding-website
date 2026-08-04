@@ -14,7 +14,7 @@ export const Route = createFileRoute("/reviews")({
   component: Reviews,
 });
 
-const reviews = [
+const defaultReviews = [
   { n: "Rohan Mehta", d: "3 weeks ago", q: "From consultation to delivery, everything was flawless. The final film brought us to tears." },
   { n: "Nisha Rao", d: "2 months ago", q: "Our maternity shoot was intimate and beautifully lit. The team made me feel comfortable throughout." },
   { n: "Ananya Kapoor", d: "1 month ago", q: "They photographed both my wedding and my daughter's first birthday. A studio you trust for a lifetime." },
@@ -24,9 +24,11 @@ const reviews = [
 ];
 
 function Reviews() {
-  const { settings } = useSiteContent();
+  const { settings, customReviews } = useSiteContent();
+  const list = customReviews && customReviews.length > 0 ? customReviews : defaultReviews;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
       <section className="pt-40 pb-16">
         <div className="container-lux flex flex-wrap items-end justify-between gap-6">
@@ -45,16 +47,20 @@ function Reviews() {
       </section>
 
       <section className="container-lux pb-24 grid gap-6 md:grid-cols-2">
-        {reviews.map((r) => (
-          <figure key={r.n} className="border border-border p-8">
+        {list.map((r, i) => (
+          <figure key={i} className="border border-border p-8 bg-card rounded-sm">
             <div className="flex items-center gap-3">
-              <div className="size-10 rounded-full bg-secondary flex items-center justify-center font-medium">{r.n.charAt(0)}</div>
+              <div className="size-10 rounded-full bg-secondary flex items-center justify-center font-medium font-display">
+                {r.n.charAt(0)}
+              </div>
               <div>
                 <div className="font-medium text-sm">{r.n}</div>
                 <div className="text-xs text-muted-foreground">{r.d}</div>
               </div>
               <div className="ml-auto flex text-[color:var(--gold)]">
-                {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="size-3.5 fill-current" />)}
+                {Array.from({ length: r.rating || 5 }).map((_, st) => (
+                  <Star key={st} className="size-3.5 fill-current" />
+                ))}
               </div>
             </div>
             <blockquote className="mt-4 text-muted-foreground leading-relaxed">&ldquo;{r.q}&rdquo;</blockquote>
