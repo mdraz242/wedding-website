@@ -15,7 +15,7 @@ export const Route = createFileRoute("/films")({
   component: Films,
 });
 
-const films = [
+const defaultFilms = [
   { title: "A Palace Wedding · Udaipur", cover: img.destination },
   { title: "The Kaur & Singh Wedding", cover: img.couple3 },
   { title: "Aarav + Meera · Highlight", cover: img.couple2 },
@@ -25,25 +25,30 @@ const films = [
 ];
 
 function Films() {
-  const { settings } = useSiteContent();
+  const { settings, getPageSEO } = useSiteContent();
+  const page = getPageSEO("films");
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
       <section className="pt-40 pb-16">
         <div className="container-lux">
           <div className="kbd-eyebrow text-[color:var(--gold)]">Films</div>
-          <h1 className="mt-4 font-display text-5xl md:text-7xl">Films that play like memory.</h1>
+          <h1 className="mt-4 font-display text-5xl md:text-7xl">{page.heading || "Films that play like memory."}</h1>
+          <p className="mt-4 text-muted-foreground max-w-xl text-base md:text-lg leading-relaxed">
+            {page.subheading || "Moving pictures that feel like feature films."}
+          </p>
         </div>
       </section>
 
       <section className="container-lux pb-24 grid gap-6 md:grid-cols-2">
-        {films.map((f) => (
+        {defaultFilms.map((f) => (
           <a
             key={f.title}
             href={settings.social.youtube}
             target="_blank"
             rel="noreferrer"
-            className="group relative aspect-video overflow-hidden bg-black block"
+            className="group relative aspect-video overflow-hidden bg-black block rounded-sm"
           >
             <img src={f.cover} alt={f.title} className="h-full w-full object-cover opacity-75 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />

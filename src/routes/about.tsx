@@ -17,22 +17,25 @@ export const Route = createFileRoute("/about")({
 });
 
 function About() {
+  const { settings, getPageSEO } = useSiteContent();
+  const page = getPageSEO("about");
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
 
       <section className="pt-40 pb-24">
-        <div className="container-lux grid md:grid-cols-12 gap-12">
+        <div className="container-lux grid md:grid-cols-12 gap-12 items-center">
           <div className="md:col-span-6">
             <div className="kbd-eyebrow text-[color:var(--gold)]">About the atelier</div>
-            <h1 className="mt-4 font-display text-5xl md:text-7xl leading-[1]">
-              Since 1966,<br /><span className="italic">a quiet obsession with light.</span>
+            <h1 className="mt-4 font-display text-5xl md:text-7xl leading-[1.08]">
+              {page.heading || "Six decades of light, shadow & emotion."}
             </h1>
-            <p className="mt-6 text-lg text-muted-foreground max-w-lg">
-              Founded in Chandigarh, Kamal Studios has photographed three generations of India's most celebrated families and brands. What began as a portrait studio is today a full-service atelier for photography, cinematography and heirloom albums.
+            <p className="mt-6 text-lg text-muted-foreground max-w-lg leading-relaxed">
+              {page.body_text || "Founded in Chandigarh, Kamal Studios has photographed three generations of India's most celebrated families and brands."}
             </p>
           </div>
-          <img src={img.studio} alt="Kamal Studios team" className="md:col-span-6 aspect-[4/3] object-cover" />
+          <img src={page.hero_image || img.studio} alt="Kamal Studios team" className="md:col-span-6 aspect-[4/3] object-cover rounded-sm" />
         </div>
       </section>
 
@@ -47,7 +50,7 @@ function About() {
             <div key={title}>
               <Icon className="size-6 text-[color:var(--gold)]" />
               <div className="font-display text-2xl mt-4">{title}</div>
-              <p className="text-white/60 mt-2 text-sm">{desc}</p>
+              <p className="text-white/60 mt-2 text-sm leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
@@ -76,18 +79,13 @@ function About() {
       </section>
 
       <section className="py-24 bg-secondary/50 text-center">
-        {(() => {
-          const { settings } = useSiteContent();
-          return (
-            <div className="container-lux">
-              <h2 className="font-display text-4xl md:text-6xl">Let's create your archive.</h2>
-              <Link to="/contact" className="mt-8 inline-flex items-center gap-2 bg-foreground text-background px-8 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors">
-                Begin the conversation <ArrowRight className="size-4" />
-              </Link>
-              <div className="mt-4 text-sm text-muted-foreground">or call <a href={`tel:${settings.phoneRaw}`} className="underline hover-gold">{settings.phone}</a></div>
-            </div>
-          );
-        })()}
+        <div className="container-lux">
+          <h2 className="font-display text-4xl md:text-6xl">Let's create your archive.</h2>
+          <Link to="/contact" className="mt-8 inline-flex items-center gap-2 bg-foreground text-background px-8 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors">
+            Begin the conversation <ArrowRight className="size-4" />
+          </Link>
+          <div className="mt-4 text-sm text-muted-foreground">or call <a href={`tel:${settings.phoneRaw}`} className="underline hover-gold">{settings.phone}</a></div>
+        </div>
       </section>
       <SiteFooter />
     </div>

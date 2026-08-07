@@ -9,17 +9,19 @@ export const Route = createFileRoute("/terms")({
 });
 
 function Terms() {
-  const { settings } = useSiteContent();
+  const { settings, getPageSEO } = useSiteContent();
+  const page = getPageSEO("terms");
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
       <article className="pt-40 pb-24 container-lux max-w-3xl">
         <div className="kbd-eyebrow text-[color:var(--gold)]">Legal</div>
-        <h1 className="mt-4 font-display text-5xl">Terms & Conditions</h1>
-        <p className="text-sm text-muted-foreground mt-2">Last updated: 18 July 2026</p>
+        <h1 className="mt-4 font-display text-5xl">{page.heading || "Terms & Conditions"}</h1>
+        <p className="text-sm text-muted-foreground mt-2">{page.subheading || "Guidelines governing bookings, deliverables, and copyright."}</p>
 
         <div className="mt-10 space-y-6 text-foreground/90 leading-relaxed">
-          <p>By engaging {settings.name} ("we", "us"), you agree to the terms below. These terms sit alongside the specific proposal or invoice issued for your engagement, which take precedence where they differ.</p>
+          <p>{page.body_text || `By engaging ${settings.name} ("we", "us"), you agree to the terms below. These terms sit alongside the specific proposal or invoice issued for your engagement, which take precedence where they differ.`}</p>
 
           <h2 className="font-display text-2xl">Bookings & payment</h2>
           <p>A booking is confirmed once we receive a signed proposal and a 30% retainer. The remaining balance is due before the delivery of final files, unless stated otherwise in your proposal.</p>

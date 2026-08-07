@@ -16,8 +16,19 @@ export const Route = createFileRoute("/blog/$slug")({
 });
 
 type Post = {
-  id: string; slug: string; title: string; excerpt: string | null; cover_url: string | null;
-  content: string; category: string | null; author: string | null; published_at: string | null;
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  cover_url: string | null;
+  content: string;
+  category: string | null;
+  author: string | null;
+  published_at: string | null;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  tags?: string;
 };
 
 function Post() {
@@ -25,32 +36,56 @@ function Post() {
   const [post, setPost] = useState<Post | null | undefined>(undefined);
 
   useEffect(() => {
-    supabase.from("blog_posts").select("*").eq("slug", slug).eq("published", true).maybeSingle().then(({ data }) => setPost((data as Post) ?? null));
+    supabase
+      .from("blog_posts")
+      .select("*")
+      .eq("slug", slug)
+      .eq("published", true)
+      .maybeSingle()
+      .then(({ data }) => setPost((data as Post) ?? null));
   }, [slug]);
 
   if (post === undefined) return <div className="min-h-screen bg-background" />;
   if (post === null) throw notFound();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
       <article className="pt-40 pb-24 container-lux max-w-3xl">
         <div className="kbd-eyebrow text-[color:var(--gold)]">{post.category ?? "Journal"}</div>
-        <h1 className="mt-4 font-display text-4xl md:text-6xl">{post.title}</h1>
-        <div className="mt-4 text-sm text-muted-foreground">
-          {post.author} · {post.published_at ? new Date(post.published_at).toLocaleDateString() : ""}
+        <h1 className="mt-4 font-display text-4xl md:text-6xl leading-[1.1]">{post.title}</h1>
+        <div className="mt-4 text-sm text-muted-foreground flex items-center justify-between border-y border-border py-3">
+          <span>By {post.author || "Kamal Studios"}</span>
+          <span>{post.published_at ? new Date(post.published_at).toLocaleDateString() : ""}</span>
         </div>
+
         {post.cover_url && (
-          <div className="mt-10 aspect-[16/9] overflow-hidden bg-black">
+          <div className="mt-8 aspect-[16/9] overflow-hidden bg-black rounded-sm">
             <img src={post.cover_url} alt={post.title} className="w-full h-full object-cover" />
           </div>
         )}
-        {post.excerpt && <p className="mt-10 text-lg text-muted-foreground italic">{post.excerpt}</p>}
+
+        {post.excerpt && <p className="mt-8 text-lg text-muted-foreground italic leading-relaxed">{post.excerpt}</p>}
+
         <div className="mt-8 prose prose-invert max-w-none whitespace-pre-wrap text-base leading-relaxed">
           {post.content}
         </div>
-        <div className="mt-16">
-          <Link to="/blog" className="text-xs uppercase tracking-[0.22em] text-[color:var(--gold)] hover:underline">← All posts</Link>
+
+        {post.tags && (
+          <div className="mt-12 pt-6 border-t border-border flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <span className="text-[color:var(--gold)] font-medium">Tags:</span>
+            {post.tags.split(",").map((t, i) => (
+              <span key={i} className="bg-card px-2.5 py-1 border border-border rounded-sm">
+                #{t.trim()}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-12">
+          <Link to="/blog" className="text-xs uppercase tracking-[0.22em] text-[color:var(--gold)] hover:underline font-medium">
+            ← Back to all journal articles
+          </Link>
         </div>
       </article>
       <SiteFooter />
@@ -60,12 +95,12 @@ function Post() {
 
 function NotFoundState() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
       <div className="pt-40 pb-24 container-lux text-center">
         <h1 className="font-display text-5xl">Post not found</h1>
         <p className="mt-4 text-muted-foreground">This story may have moved.</p>
-        <Link to="/blog" className="mt-8 inline-block text-[color:var(--gold)]">← All posts</Link>
+        <Link to="/blog" className="mt-8 inline-block text-[color:var(--gold)]">← Back to blog</Link>
       </div>
       <SiteFooter />
     </div>

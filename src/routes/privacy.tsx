@@ -9,17 +9,19 @@ export const Route = createFileRoute("/privacy")({
 });
 
 function Privacy() {
-  const { settings } = useSiteContent();
+  const { settings, getPageSEO } = useSiteContent();
+  const page = getPageSEO("privacy");
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
       <article className="pt-40 pb-24 container-lux max-w-3xl prose prose-neutral">
         <div className="kbd-eyebrow text-[color:var(--gold)]">Legal</div>
-        <h1 className="mt-4 font-display text-5xl">Privacy Policy</h1>
-        <p className="text-sm text-muted-foreground mt-2">Last updated: 18 July 2026</p>
+        <h1 className="mt-4 font-display text-5xl">{page.heading || "Privacy Policy"}</h1>
+        <p className="text-sm text-muted-foreground mt-2">{page.subheading || "How we respect and safeguard your personal information and media."}</p>
 
         <div className="mt-10 space-y-6 text-foreground/90 leading-relaxed">
-          <p>{settings.name} ("we", "us", "our") respects your privacy. This policy explains what information we collect when you visit {settings.domain} or engage our services, and how we use it.</p>
+          <p>{page.body_text || `${settings.name} ("we", "us", "our") respects your privacy. This policy explains what information we collect when you visit ${settings.domain} or engage our services, and how we use it.`}</p>
 
           <h2 className="font-display text-2xl">Information we collect</h2>
           <p>Name, phone, email, event details, and any files you share when you enquire, book, or use our services. We may also collect basic analytics (pages visited, device type) to improve the site.</p>
@@ -41,7 +43,7 @@ function Privacy() {
           <p>We use minimal cookies for analytics and to remember basic preferences. You can disable cookies in your browser at any time.</p>
 
           <h2 className="font-display text-2xl">Your rights</h2>
-          <p>You can request access, correction, or deletion of your personal data by writing to <a className="underline" href={`mailto:${settings.email}`}>{settings.email}</a>.</p>
+          <p>You can request access, correction, or deletion of your personal data by writing to <a className="underline hover-gold" href={`mailto:${settings.email}`}>{settings.email}</a>.</p>
 
           <h2 className="font-display text-2xl">Contact</h2>
           <p>{settings.name} · {settings.address} · {settings.email} · {settings.phone}</p>

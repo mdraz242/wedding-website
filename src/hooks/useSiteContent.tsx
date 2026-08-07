@@ -1,7 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { site as defaultSite } from "@/lib/site";
 import brandLogo from "@/assets/logo.png";
-import { getSiteSettings, getCustomServices, getCustomLocations, getCustomReviews } from "@/lib/admin.functions";
+import {
+  getSiteSettings,
+  getCustomServices,
+  getCustomLocations,
+  getCustomReviews,
+  getCustomPagesSEO,
+  getCustomHomeSections,
+} from "@/lib/admin.functions";
+import { defaultPagesSEO, type PageKey, type PageSEOContent } from "@/data/pages";
+import { defaultHomeSections, type HomeSectionsConfig } from "@/data/homeSections";
 
 export interface SiteSettings {
   name: string;
@@ -64,7 +73,7 @@ export const defaultSettings: SiteSettings = {
     title_part1: "Every moment,",
     title_part2: "preserved for a lifetime.",
     subtitle: "A photography and cinematography atelier trusted for six decades.",
-  }
+  },
 };
 
 interface SiteContentContextType {
@@ -72,6 +81,9 @@ interface SiteContentContextType {
   customServices: any[] | null;
   customLocations: any[] | null;
   customReviews: any[] | null;
+  customPagesSEO: Record<string, PageSEOContent> | null;
+  homeSections: HomeSectionsConfig;
+  getPageSEO: (key: PageKey) => PageSEOContent;
   refresh: () => Promise<void>;
   loading: boolean;
 }
@@ -81,6 +93,9 @@ const SiteContentContext = createContext<SiteContentContextType>({
   customServices: null,
   customLocations: null,
   customReviews: null,
+  customPagesSEO: null,
+  homeSections: defaultHomeSections,
+  getPageSEO: (key: PageKey) => defaultPagesSEO[key],
   refresh: async () => {},
   loading: false,
 });
@@ -90,6 +105,8 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
   const [customServices, setCustomServices] = useState<any[] | null>(null);
   const [customLocations, setCustomLocations] = useState<any[] | null>(null);
   const [customReviews, setCustomReviews] = useState<any[] | null>(null);
+  const [customPagesSEO, setCustomPagesSEO] = useState<Record<string, PageSEOContent> | null>(null);
+  const [homeSections, setHomeSections] = useState<HomeSectionsConfig>(defaultHomeSections);
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = useCallback(async () => {
@@ -99,11 +116,13 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
     }
 
     try {
-      const [sRes, svcRes, locRes, revRes] = await Promise.all([
+      const [sRes, svcRes, locRes, revRes, pagesRes, homeRes] = await Promise.all([
         getSiteSettings(),
         getCustomServices(),
         getCustomLocations(),
         getCustomReviews(),
+        getCustomPagesSEO(),
+        getCustomHomeSections(),
       ]);
 
       if (sRes?.settings) {
@@ -130,6 +149,23 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
       if (svcRes?.services) setCustomServices(svcRes.services);
       if (locRes?.locations) setCustomLocations(locRes.locations);
       if (revRes?.reviews) setCustomReviews(revRes.reviews);
+      if (pagesRes?.pages) setCustomPagesSEO(pagesRes.pages);
+      if (homeRes?.sections) {
+        setHomeSections({
+          ...defaultHomeSections,
+          ...homeRes.sections,
+          hero: { ...defaultHomeSections.hero, ...(homeRes.sections.hero || {}) },
+          featured_services: { ...defaultHomeSections.featured_services, ...(homeRes.sections.featured_services || {}) },
+          why_us: { ...defaultHomeSections.why_us, ...(homeRes.sections.why_us || {}) },
+          portfolio_preview: { ...defaultHomeSections.portfolio_preview, ...(homeRes.sections.portfolio_preview || {}) },
+          films_section: { ...defaultHomeSections.films_section, ...(homeRes.sections.films_section || {}) },
+          google_reviews: { ...defaultHomeSections.google_reviews, ...(homeRes.sections.google_reviews || {}) },
+          process_section: { ...defaultHomeSections.process_section, ...(homeRes.sections.process_section || {}) },
+          service_areas_section: { ...defaultHomeSections.service_areas_section, ...(homeRes.sections.service_areas_section || {}) },
+          faq_section: { ...defaultHomeSections.faq_section, ...(homeRes.sections.faq_section || {}) },
+          final_cta: { ...defaultHomeSections.final_cta, ...(homeRes.sections.final_cta || {}) },
+        });
+      }
     } catch (err) {
       console.error("Failed to parse or fetch site settings:", err);
     } finally {
@@ -141,6 +177,19 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
     fetchSettings();
   }, [fetchSettings]);
 
+  const getPageSEO = useCallback(
+    (key: PageKey): PageSEOContent => {
+      const custom = customPagesSEO?.[key];
+      const fallback = defaultPagesSEO[key] || defaultPagesSEO.home;
+      if (!custom) return fallback;
+      return {
+        ...fallback,
+        ...custom,
+      };
+    },
+    [customPagesSEO],
+  );
+
   return (
     <SiteContentContext.Provider
       value={{
@@ -148,6 +197,9 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
         customServices,
         customLocations,
         customReviews,
+        customPagesSEO,
+        homeSections,
+        getPageSEO,
         refresh: fetchSettings,
         loading,
       }}

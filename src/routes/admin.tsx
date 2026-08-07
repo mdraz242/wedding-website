@@ -16,6 +16,11 @@ import {
   MapPin,
   Star,
   Sparkles,
+  Search,
+  Layout,
+  Home as HomeIcon,
+  HelpCircle,
+  CheckCircle,
 } from "lucide-react";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
@@ -45,10 +50,16 @@ import {
   updateCustomLocations,
   getCustomReviews,
   updateCustomReviews,
+  getCustomPagesSEO,
+  updateCustomPagesSEO,
+  getCustomHomeSections,
+  updateCustomHomeSections,
 } from "@/lib/admin.functions";
 import { useSiteContent, type SiteSettings } from "@/hooks/useSiteContent";
 import { services as defaultServices, type Service } from "@/data/services";
 import { locations as defaultLocations, type Location } from "@/data/locations";
+import { defaultPagesSEO, type PageKey, type PageSEOContent } from "@/data/pages";
+import { defaultHomeSections, type HomeSectionsConfig, type WhyUsItem, type FAQItem } from "@/data/homeSections";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -59,6 +70,8 @@ export const Route = createFileRoute("/admin")({
 
 type Tab =
   | "overview"
+  | "home_sections"
+  | "pages"
   | "enquiries"
   | "portfolio"
   | "blog"
@@ -177,13 +190,15 @@ function Dashboard({ onLock }: { onLock: () => void }) {
         {(
           [
             ["overview", "Overview"],
+            ["home_sections", "Home Sections"],
+            ["pages", "Pages & SEO"],
             ["enquiries", "Enquiries"],
             ["portfolio", "Portfolio"],
-            ["blog", "Blog"],
+            ["blog", "Blog Posting"],
             ["services", "Services"],
             ["locations", "Locations"],
             ["reviews", "Reviews"],
-            ["content", "Content"],
+            ["content", "Site Identity"],
             ["settings", "Settings"],
           ] as [Tab, string][]
         ).map(([k, label]) => (
@@ -203,6 +218,8 @@ function Dashboard({ onLock }: { onLock: () => void }) {
 
       <div className="mt-10">
         {tab === "overview" && <Overview onGo={setTab} />}
+        {tab === "home_sections" && <HomeSectionsPanel />}
+        {tab === "pages" && <PagesSEOPanel />}
         {tab === "enquiries" && <EnquiriesPanel />}
         {tab === "portfolio" && <PortfolioPanel />}
         {tab === "blog" && <BlogPanel />}
@@ -221,7 +238,7 @@ function Overview({ onGo }: { onGo: (t: Tab) => void }) {
   const enq = useServerFn(listEnquiries);
   const alb = useServerFn(listAlbums);
   const pos = useServerFn(listPosts);
-  const { customServices, customLocations, customReviews } = useSiteContent();
+  const { customServices, customLocations, customReviews, customPagesSEO } = useSiteContent();
 
   useEffect(() => {
     Promise.all([enq(), alb(), pos()]).then(([a, b, c]) =>
@@ -230,13 +247,15 @@ function Overview({ onGo }: { onGo: (t: Tab) => void }) {
   }, [enq, alb, pos]);
 
   const cards = [
+    [HomeIcon, "Home Sections", "10 Sections", "home_sections" as Tab],
+    [Layout, "Pages & SEO", customPagesSEO ? Object.keys(customPagesSEO).length : 11, "pages" as Tab],
     [MessageSquare, "Enquiries", counts.enquiries, "enquiries" as Tab],
     [ImageIcon, "Portfolio Albums", counts.albums, "portfolio" as Tab],
     [FileText, "Blog Posts", counts.posts, "blog" as Tab],
     [Briefcase, "Services", (customServices || defaultServices).length, "services" as Tab],
     [MapPin, "Service Areas", (customLocations || defaultLocations).length, "locations" as Tab],
     [Star, "Client Reviews", customReviews ? customReviews.length : 6, "reviews" as Tab],
-    [Globe, "Website Content", "Edit", "content" as Tab],
+    [Globe, "Site Content", "Edit", "content" as Tab],
     [SettingsIcon, "Studio Settings", "Lock", "settings" as Tab],
   ] as const;
 
@@ -254,6 +273,638 @@ function Overview({ onGo }: { onGo: (t: Tab) => void }) {
         </button>
       ))}
     </div>
+  );
+}
+
+/* ─────────── Home Sections Panel (Every Home Section Editable) ─────────── */
+
+function HomeSectionsPanel() {
+  const { homeSections, refresh } = useSiteContent();
+  const updateSections = useServerFn(updateCustomHomeSections);
+  const upload = useMediaUpload();
+
+  const [form, setForm] = useState<HomeSectionsConfig>(homeSections);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    setForm(homeSections);
+  }, [homeSections]);
+
+  const handleWhyUsUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const url = await upload(file);
+      setForm((prev) => ({
+        ...prev,
+        why_us: { ...prev.why_us, image_url: url },
+      }));
+    } catch (e) {
+      alert("Image upload failed.");
+    }
+    setUploading(false);
+  };
+
+  const handleCTAUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const url = await upload(file);
+      setForm((prev) => ({
+        ...prev,
+        final_cta: { ...prev.final_cta, background_image: url },
+      }));
+    } catch (e) {
+      alert("Image upload failed.");
+    }
+    setUploading(false);
+  };
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await updateSections({ data: { sections: form } });
+      if (res.ok) {
+        await refresh();
+        setMessage({ ok: true, text: "Home Page sections updated successfully!" });
+      } else {
+        setMessage({ ok: false, text: res.error || "Failed to update sections." });
+      }
+    } catch (err) {
+      setMessage({ ok: false, text: "Error saving Home sections." });
+    }
+    setSaving(false);
+  };
+
+  return (
+    <form onSubmit={save} className="space-y-10 max-w-4xl">
+      {/* 1. Hero */}
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3 flex items-center gap-2">
+          <HomeIcon className="size-5" /> 1. Home Hero Banner Section
+        </h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input
+            label="Hero Title Part 1"
+            value={form.hero.title_part1}
+            onChange={(v) => setForm({ ...form, hero: { ...form.hero, title_part1: v } })}
+          />
+          <Input
+            label="Hero Title Part 2 (Italic / Gold Accent)"
+            value={form.hero.title_part2}
+            onChange={(v) => setForm({ ...form, hero: { ...form.hero, title_part2: v } })}
+          />
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Hero Subtitle</label>
+            <textarea
+              value={form.hero.subtitle}
+              onChange={(e) => setForm({ ...form, hero: { ...form.hero, subtitle: e.target.value } })}
+              rows={3}
+              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+            />
+          </div>
+          <Input
+            label="Primary Button Text"
+            value={form.hero.btn_primary_text}
+            onChange={(v) => setForm({ ...form, hero: { ...form.hero, btn_primary_text: v } })}
+          />
+          <Input
+            label="Secondary Button Text"
+            value={form.hero.btn_secondary_text}
+            onChange={(v) => setForm({ ...form, hero: { ...form.hero, btn_secondary_text: v } })}
+          />
+        </div>
+      </div>
+
+      {/* 2. Featured Services */}
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3 flex items-center gap-2">
+          <Briefcase className="size-5" /> 2. Featured Services Section Header
+        </h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input
+            label="Eyebrow Tag"
+            value={form.featured_services.eyebrow}
+            onChange={(v) => setForm({ ...form, featured_services: { ...form.featured_services, eyebrow: v } })}
+          />
+          <Input
+            label="Section Title (H2)"
+            value={form.featured_services.heading}
+            onChange={(v) => setForm({ ...form, featured_services: { ...form.featured_services, heading: v } })}
+          />
+        </div>
+      </div>
+
+      {/* 3. Why Us Section */}
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3 flex items-center gap-2">
+          <CheckCircle className="size-5" /> 3. Why Kamal Studios Section & Items
+        </h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input
+            label="Eyebrow Tag"
+            value={form.why_us.eyebrow}
+            onChange={(v) => setForm({ ...form, why_us: { ...form.why_us, eyebrow: v } })}
+          />
+          <Input
+            label="Section Title"
+            value={form.why_us.heading}
+            onChange={(v) => setForm({ ...form, why_us: { ...form.why_us, heading: v } })}
+          />
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Section Feature Image</label>
+            <div className="mt-3 flex items-center gap-4">
+              {form.why_us.image_url && <img src={form.why_us.image_url} alt="" className="w-32 h-32 object-cover bg-black" />}
+              <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
+                <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload Feature Image"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleWhyUsUpload(e.target.files[0])}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-border space-y-4">
+          <div className="font-display text-lg">Why Us Feature Points ({form.why_us.items.length})</div>
+          {form.why_us.items.map((item, idx) => (
+            <div key={idx} className="grid gap-4 sm:grid-cols-2 p-4 border border-border bg-background rounded-sm">
+              <Input
+                label={`Point #${idx + 1} Title`}
+                value={item.title}
+                onChange={(v) => {
+                  const updated = [...form.why_us.items];
+                  updated[idx] = { ...item, title: v };
+                  setForm({ ...form, why_us: { ...form.why_us, items: updated } });
+                }}
+              />
+              <Input
+                label={`Point #${idx + 1} Description`}
+                value={item.desc}
+                onChange={(v) => {
+                  const updated = [...form.why_us.items];
+                  updated[idx] = { ...item, desc: v };
+                  setForm({ ...form, why_us: { ...form.why_us, items: updated } });
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. Portfolio Preview & Films */}
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3 flex items-center gap-2">
+          <ImageIcon className="size-5" /> 4 & 5. Portfolio & Films Headers
+        </h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input
+            label="Portfolio Section Eyebrow"
+            value={form.portfolio_preview.eyebrow}
+            onChange={(v) => setForm({ ...form, portfolio_preview: { ...form.portfolio_preview, eyebrow: v } })}
+          />
+          <Input
+            label="Portfolio Section Title"
+            value={form.portfolio_preview.heading}
+            onChange={(v) => setForm({ ...form, portfolio_preview: { ...form.portfolio_preview, heading: v } })}
+          />
+          <Input
+            label="Films Section Eyebrow"
+            value={form.films_section.eyebrow}
+            onChange={(v) => setForm({ ...form, films_section: { ...form.films_section, eyebrow: v } })}
+          />
+          <Input
+            label="Films Section Title"
+            value={form.films_section.heading}
+            onChange={(v) => setForm({ ...form, films_section: { ...form.films_section, heading: v } })}
+          />
+        </div>
+      </div>
+
+      {/* 6. Process Section */}
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3 flex items-center gap-2">
+          <Sparkles className="size-5" /> 6. Process Milestones Section
+        </h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input
+            label="Eyebrow Tag"
+            value={form.process_section.eyebrow}
+            onChange={(v) => setForm({ ...form, process_section: { ...form.process_section, eyebrow: v } })}
+          />
+          <Input
+            label="Section Title"
+            value={form.process_section.heading}
+            onChange={(v) => setForm({ ...form, process_section: { ...form.process_section, heading: v } })}
+          />
+          <div className="md:col-span-2">
+            <Input
+              label="Process Steps (Comma Separated)"
+              value={form.process_section.steps.join(", ")}
+              onChange={(v) =>
+                setForm({
+                  ...form,
+                  process_section: {
+                    ...form.process_section,
+                    steps: v.split(",").map((s) => s.trim()),
+                  },
+                })
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 7. Service Areas Section */}
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3 flex items-center gap-2">
+          <MapPin className="size-5" /> 7. Service Areas Section Header
+        </h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input
+            label="Eyebrow Tag"
+            value={form.service_areas_section.eyebrow}
+            onChange={(v) => setForm({ ...form, service_areas_section: { ...form.service_areas_section, eyebrow: v } })}
+          />
+          <Input
+            label="Section Title"
+            value={form.service_areas_section.heading}
+            onChange={(v) => setForm({ ...form, service_areas_section: { ...form.service_areas_section, heading: v } })}
+          />
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Intro Paragraph</label>
+            <textarea
+              value={form.service_areas_section.paragraph}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  service_areas_section: { ...form.service_areas_section, paragraph: e.target.value },
+                })
+              }
+              rows={3}
+              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 8. FAQ Section */}
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <h3 className="font-display text-2xl text-[color:var(--gold)] flex items-center gap-2">
+            <HelpCircle className="size-5" /> 8. Home FAQ Accordion Section
+          </h3>
+          <button
+            type="button"
+            onClick={() =>
+              setForm({
+                ...form,
+                faq_section: {
+                  ...form.faq_section,
+                  faqs: [...form.faq_section.faqs, { q: "New Question?", a: "Answer text here." }],
+                },
+              })
+            }
+            className="inline-flex items-center gap-2 border border-border px-3 py-1.5 text-xs uppercase tracking-widest hover:border-[color:var(--gold)]"
+          >
+            <Plus className="size-3.5" /> Add FAQ
+          </button>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input
+            label="Eyebrow Tag"
+            value={form.faq_section.eyebrow}
+            onChange={(v) => setForm({ ...form, faq_section: { ...form.faq_section, eyebrow: v } })}
+          />
+          <Input
+            label="Section Title"
+            value={form.faq_section.heading}
+            onChange={(v) => setForm({ ...form, faq_section: { ...form.faq_section, heading: v } })}
+          />
+        </div>
+
+        <div className="space-y-4 pt-4">
+          {form.faq_section.faqs.map((f, idx) => (
+            <div key={idx} className="p-4 border border-border bg-background space-y-3 rounded-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[color:var(--gold)] uppercase">FAQ #{idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = form.faq_section.faqs.filter((_, i) => i !== idx);
+                    setForm({ ...form, faq_section: { ...form.faq_section, faqs: updated } });
+                  }}
+                  className="text-xs text-destructive hover:underline"
+                >
+                  Remove FAQ
+                </button>
+              </div>
+              <Input
+                label="Question"
+                value={f.q}
+                onChange={(v) => {
+                  const updated = [...form.faq_section.faqs];
+                  updated[idx] = { ...f, q: v };
+                  setForm({ ...form, faq_section: { ...form.faq_section, faqs: updated } });
+                }}
+              />
+              <div>
+                <label className="kbd-eyebrow text-muted-foreground">Answer</label>
+                <textarea
+                  value={f.a}
+                  onChange={(e) => {
+                    const updated = [...form.faq_section.faqs];
+                    updated[idx] = { ...f, a: e.target.value };
+                    setForm({ ...form, faq_section: { ...form.faq_section, faqs: updated } });
+                  }}
+                  rows={2}
+                  className="mt-2 w-full bg-transparent border-b border-border py-2 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 9. Final CTA Banner */}
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3 flex items-center gap-2">
+          <Globe className="size-5" /> 9. Final CTA Booking Banner
+        </h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input
+            label="Eyebrow Tag"
+            value={form.final_cta.eyebrow}
+            onChange={(v) => setForm({ ...form, final_cta: { ...form.final_cta, eyebrow: v } })}
+          />
+          <Input
+            label="Headline"
+            value={form.final_cta.heading}
+            onChange={(v) => setForm({ ...form, final_cta: { ...form.final_cta, heading: v } })}
+          />
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Paragraph Text</label>
+            <textarea
+              value={form.final_cta.paragraph}
+              onChange={(e) => setForm({ ...form, final_cta: { ...form.final_cta, paragraph: e.target.value } })}
+              rows={2}
+              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+            />
+          </div>
+          <Input
+            label="Primary Button Label"
+            value={form.final_cta.btn_primary_text}
+            onChange={(v) => setForm({ ...form, final_cta: { ...form.final_cta, btn_primary_text: v } })}
+          />
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Background Image</label>
+            <div className="mt-3 flex items-center gap-4">
+              {form.final_cta.background_image && (
+                <img src={form.final_cta.background_image} alt="" className="w-32 h-20 object-cover bg-black" />
+              )}
+              <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
+                <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload Background Image"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleCTAUpload(e.target.files[0])}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {message && (
+        <div className={`p-4 border ${message.ok ? "border-[color:var(--gold)] text-[color:var(--gold)] bg-card" : "border-destructive text-destructive bg-card"} text-sm`}>
+          {message.text}
+        </div>
+      )}
+
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={saving}
+          className="bg-foreground text-background px-8 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
+        >
+          {saving ? "Saving Changes…" : "Save All Home Sections"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/* ─────────── Pages & SEO Editor Panel ─────────── */
+
+const pageLabels: Record<PageKey, string> = {
+  home: "Home Page ( / )",
+  about: "About Us ( /about )",
+  services: "Services Directory ( /services )",
+  locations: "Service Areas Directory ( /locations )",
+  portfolio: "Portfolio ( /portfolio )",
+  films: "Cinematic Films ( /films )",
+  reviews: "Client Reviews ( /reviews )",
+  blog: "Journal / Blog Directory ( /blog )",
+  contact: "Contact Us ( /contact )",
+  privacy: "Privacy Policy ( /privacy )",
+  terms: "Terms & Conditions ( /terms )",
+};
+
+function PagesSEOPanel() {
+  const { customPagesSEO, refresh } = useSiteContent();
+  const updateSEO = useServerFn(updateCustomPagesSEO);
+  const upload = useMediaUpload();
+
+  const [selectedKey, setSelectedKey] = useState<PageKey>("home");
+  const [pagesState, setPagesState] = useState<Record<string, PageSEOContent>>({});
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    const merged: Record<string, PageSEOContent> = {};
+    (Object.keys(defaultPagesSEO) as PageKey[]).forEach((k) => {
+      merged[k] = {
+        ...defaultPagesSEO[k],
+        ...(customPagesSEO?.[k] || {}),
+      };
+    });
+    setPagesState(merged);
+  }, [customPagesSEO]);
+
+  const currentPage = pagesState[selectedKey] || defaultPagesSEO[selectedKey];
+
+  const updateCurrentPage = (fields: Partial<PageSEOContent>) => {
+    setPagesState((prev) => ({
+      ...prev,
+      [selectedKey]: {
+        ...prev[selectedKey],
+        ...fields,
+      },
+    }));
+  };
+
+  const handleHeroImageUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const url = await upload(file);
+      updateCurrentPage({ hero_image: url, og_image: url });
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Image upload failed");
+    }
+    setUploading(false);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await updateSEO({ data: { pages: pagesState } });
+      if (res.ok) {
+        await refresh();
+        setMessage({ ok: true, text: `Successfully updated content & SEO for ${pageLabels[selectedKey]}!` });
+      } else {
+        setMessage({ ok: false, text: res.error || "Failed to save page settings." });
+      }
+    } catch (err) {
+      setMessage({ ok: false, text: "An error occurred while saving." });
+    }
+    setSaving(false);
+  };
+
+  return (
+    <form onSubmit={handleSave} className="space-y-8 max-w-4xl">
+      {/* Page selector */}
+      <div className="border border-border p-6 bg-card rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="kbd-eyebrow text-[color:var(--gold)]">Select Page</div>
+          <h2 className="font-display text-2xl mt-1">Page Copy & SEO Editor</h2>
+        </div>
+        <select
+          value={selectedKey}
+          onChange={(e) => setSelectedKey(e.target.value as PageKey)}
+          className="bg-transparent border border-border px-4 py-2 text-sm focus:outline-none focus:border-[color:var(--gold)] font-medium"
+        >
+          {(Object.keys(pageLabels) as PageKey[]).map((k) => (
+            <option key={k} value={k}>
+              {pageLabels[k]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Page Elements & Copy */}
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-xl border-b border-border pb-3 text-[color:var(--gold)] flex items-center gap-2">
+          <Layout className="size-5" /> On-Page Copy & Elements ({pageLabels[selectedKey]})
+        </h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input
+            label="Page Main Heading (H1)"
+            value={currentPage.heading ?? ""}
+            onChange={(v) => updateCurrentPage({ heading: v })}
+          />
+          <Input
+            label="Subheading / Tagline"
+            value={currentPage.subheading ?? ""}
+            onChange={(v) => updateCurrentPage({ subheading: v })}
+          />
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Main Section Body Text</label>
+            <textarea
+              value={currentPage.body_text ?? ""}
+              onChange={(e) => updateCurrentPage({ body_text: e.target.value })}
+              rows={4}
+              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Hero / Header Image</label>
+            <div className="mt-3 flex items-center gap-4">
+              {currentPage.hero_image && (
+                <img src={currentPage.hero_image} alt="" className="w-32 h-32 object-cover bg-black" />
+              )}
+              <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
+                <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload Header Image"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleHeroImageUpload(e.target.files[0])}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SEO Controls */}
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-xl border-b border-border pb-3 text-[color:var(--gold)] flex items-center gap-2">
+          <Search className="size-5" /> Search Engine Optimization (SEO) Metadata
+        </h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <Input
+              label="Meta Title (<title> Tag)"
+              value={currentPage.meta_title ?? ""}
+              placeholder="Title for Google search results"
+              onChange={(v) => updateCurrentPage({ meta_title: v })}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Meta Description</label>
+            <textarea
+              value={currentPage.meta_description ?? ""}
+              onChange={(e) => updateCurrentPage({ meta_description: e.target.value })}
+              rows={3}
+              placeholder="Search snippet summary shown on Google results"
+              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Input
+              label="Meta Keywords (Comma Separated)"
+              value={currentPage.meta_keywords ?? ""}
+              placeholder="e.g. luxury wedding photography, chandigarh wedding photographer, indian wedding films"
+              onChange={(v) => updateCurrentPage({ meta_keywords: v })}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Input
+              label="SEO Tags (Comma Separated)"
+              value={currentPage.tags ?? ""}
+              placeholder="e.g. wedding, luxury, photography, chandigarh"
+              onChange={(v) => updateCurrentPage({ tags: v })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {message && (
+        <div className={`p-4 border ${message.ok ? "border-[color:var(--gold)] text-[color:var(--gold)] bg-card" : "border-destructive text-destructive bg-card"} text-sm`}>
+          {message.text}
+        </div>
+      )}
+
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={saving}
+          className="bg-foreground text-background px-8 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
+        >
+          {saving ? "Saving Changes…" : `Save ${pageLabels[selectedKey]} Copy & SEO`}
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -459,7 +1110,7 @@ function PortfolioPanel() {
           <button
             key={a.id}
             onClick={() => setEditing(a)}
-            className="text-left border border-border bg-card hover:border-[color:var(--gold)] p-4 flex flex-col justify-between transition-colors group"
+            className="text-left border border-border bg-card hover:border-[color:var(--gold)] p-4 flex flex-col justify-between transition-colors group rounded-sm"
           >
             <div className="aspect-[4/3] bg-black overflow-hidden relative w-full mb-3">
               {a.cover_url && <img src={a.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
@@ -669,7 +1320,7 @@ function AlbumEditor({ album, onClose }: { album: Album; onClose: () => void }) 
   );
 }
 
-/* ─────────── Blog ─────────── */
+/* ─────────── Blog Panel (Full Posting + SEO) ─────────── */
 
 type Post = {
   id: string;
@@ -682,6 +1333,10 @@ type Post = {
   author: string | null;
   published: boolean;
   published_at: string | null;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  tags?: string;
 };
 
 function BlogPanel() {
@@ -720,43 +1375,50 @@ function BlogPanel() {
       author: "Kamal Studios",
       published: false,
       published_at: null,
+      meta_title: "",
+      meta_description: "",
+      meta_keywords: "",
+      tags: "",
     });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <div className="text-sm text-muted-foreground">{posts.length} posts</div>
+        <div className="text-sm text-muted-foreground">{posts.length} published blog posts</div>
         <button
           onClick={newPost}
           className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
         >
-          <Plus className="size-4" /> New post
+          <Plus className="size-4" /> Create New Blog Post
         </button>
       </div>
 
-      {!posts.length && <Empty label="No posts yet. Write your first." />}
+      {!posts.length && <Empty label="No posts yet. Write your first blog article." />}
 
       <div className="space-y-3">
         {posts.map((p) => (
           <button
             key={p.id}
             onClick={() => setEditing(p)}
-            className="w-full text-left border border-border bg-card hover:border-[color:var(--gold)] p-4 flex gap-4 transition-colors rounded-sm"
+            className="w-full text-left border border-border bg-card hover:border-[color:var(--gold)] p-4 flex gap-4 transition-colors rounded-sm group"
           >
-            <div className="w-24 h-24 bg-black flex-shrink-0 overflow-hidden">
-              {p.cover_url && <img src={p.cover_url} alt="" className="w-full h-full object-cover" />}
+            <div className="w-24 h-24 bg-black flex-shrink-0 overflow-hidden rounded-sm">
+              {p.cover_url && <img src={p.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-display text-lg truncate">{p.title}</div>
+              <div className="font-display text-lg truncate group-hover:text-[color:var(--gold)] transition-colors">{p.title}</div>
               <div className="text-xs text-muted-foreground mt-1">{p.category} · /{p.slug}</div>
-              <div
-                className={`mt-2 inline-block text-[10px] uppercase tracking-[0.22em] px-2 py-0.5 border ${
-                  p.published
-                    ? "border-[color:var(--gold)] text-[color:var(--gold)]"
-                    : "border-border text-muted-foreground"
-                }`}
-              >
-                {p.published ? "Published" : "Draft"}
+              <div className="mt-2 flex items-center gap-2">
+                <span
+                  className={`text-[10px] uppercase tracking-[0.22em] px-2 py-0.5 border ${
+                    p.published
+                      ? "border-[color:var(--gold)] text-[color:var(--gold)]"
+                      : "border-border text-muted-foreground"
+                  }`}
+                >
+                  {p.published ? "Published" : "Draft"}
+                </span>
+                {p.tags && <span className="text-xs text-muted-foreground">🏷 {p.tags}</span>}
               </div>
             </div>
           </button>
@@ -790,11 +1452,15 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
         author: p.author,
         published: p.published,
         published_at: p.published_at,
-      },
+        meta_title: p.meta_title || p.title,
+        meta_description: p.meta_description || p.excerpt,
+        meta_keywords: p.meta_keywords,
+        tags: p.tags,
+      } as any,
     });
     setSaving(false);
     if (!r.ok) return alert(r.error);
-    if (isNew) onClose();
+    onClose();
   };
 
   const remove = async () => {
@@ -815,66 +1481,121 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
   };
 
   return (
-    <div>
+    <div className="space-y-8">
       <button
         onClick={onClose}
-        className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-[color:var(--gold)] mb-6 font-medium"
+        className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-[color:var(--gold)] font-medium"
       >
         ← Back to posts
       </button>
-      <div className="grid gap-6 md:grid-cols-2">
-        <Input label="Title" value={p.title} onChange={(v) => setP({ ...p, title: v })} />
-        <Input label="Slug" value={p.slug} placeholder={slugify(p.title)} onChange={(v) => setP({ ...p, slug: v })} />
-        <Input label="Category" value={p.category ?? ""} onChange={(v) => setP({ ...p, category: v })} />
-        <Input label="Author" value={p.author ?? ""} onChange={(v) => setP({ ...p, author: v })} />
-        <div className="md:col-span-2">
-          <label className="kbd-eyebrow text-muted-foreground">Excerpt</label>
-          <textarea
-            value={p.excerpt ?? ""}
-            onChange={(e) => setP({ ...p, excerpt: e.target.value })}
-            rows={2}
-            className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
-          />
-        </div>
-        <div className="md:col-span-2">
-          <label className="kbd-eyebrow text-muted-foreground">Cover image</label>
-          <div className="mt-3 flex items-center gap-4">
-            {p.cover_url && <img src={p.cover_url} alt="" className="w-32 h-32 object-cover bg-black" />}
-            <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
-              <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload"}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && uploadCover(e.target.files[0])}
-              />
-            </label>
+
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3">Article Details</h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input label="Article Title" value={p.title} onChange={(v) => setP({ ...p, title: v, slug: p.slug || slugify(v) })} />
+          <Input label="Slug (URL)" value={p.slug} placeholder={slugify(p.title)} onChange={(v) => setP({ ...p, slug: v })} />
+          <Input label="Category (e.g. Craft, Tips, Venues)" value={p.category ?? ""} onChange={(v) => setP({ ...p, category: v })} />
+          <Input label="Author" value={p.author ?? ""} onChange={(v) => setP({ ...p, author: v })} />
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Excerpt (Short Preview Summary)</label>
+            <textarea
+              value={p.excerpt ?? ""}
+              onChange={(e) => setP({ ...p, excerpt: e.target.value })}
+              rows={2}
+              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Cover Image Banner</label>
+            <div className="mt-3 flex items-center gap-4">
+              {p.cover_url && <img src={p.cover_url} alt="" className="w-32 h-32 object-cover bg-black" />}
+              <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
+                <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload Cover Image"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && uploadCover(e.target.files[0])}
+                />
+              </label>
+            </div>
+          </div>
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Full Content (Markdown Supported)</label>
+            <textarea
+              value={p.content}
+              onChange={(e) => setP({ ...p, content: e.target.value })}
+              rows={14}
+              className="mt-2 w-full bg-transparent border border-border p-4 font-mono text-sm"
+            />
           </div>
         </div>
-        <div className="md:col-span-2">
-          <label className="kbd-eyebrow text-muted-foreground">Content (Markdown supported)</label>
-          <textarea
-            value={p.content}
-            onChange={(e) => setP({ ...p, content: e.target.value })}
-            rows={14}
-            className="mt-2 w-full bg-transparent border border-border p-4 font-mono text-sm"
+      </div>
+
+      <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+        <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3 flex items-center gap-2">
+          <Search className="size-5" /> Blog Post SEO & Tags Settings
+        </h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <Input
+              label="Post SEO Meta Title (<title>)"
+              value={p.meta_title ?? ""}
+              placeholder={p.title || "Custom SEO Title for Google"}
+              onChange={(v) => setP({ ...p, meta_title: v })}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="kbd-eyebrow text-muted-foreground">Post SEO Meta Description</label>
+            <textarea
+              value={p.meta_description ?? ""}
+              onChange={(e) => setP({ ...p, meta_description: e.target.value })}
+              rows={3}
+              placeholder={p.excerpt || "Google search result snippet for this post"}
+              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+            />
+          </div>
+          <Input
+            label="Meta Keywords (Comma Separated)"
+            value={p.meta_keywords ?? ""}
+            placeholder="e.g. wedding tips, rajasthan venues, bridal fashion"
+            onChange={(v) => setP({ ...p, meta_keywords: v })}
+          />
+          <Input
+            label="Tags (Comma Separated)"
+            value={p.tags ?? ""}
+            placeholder="e.g. Wedding, Photography, Advice"
+            onChange={(v) => setP({ ...p, tags: v })}
           />
         </div>
       </div>
-      <div className="mt-8 flex flex-wrap gap-3">
+
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-3 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={p.published}
+            onChange={(e) => setP({ ...p, published: e.target.checked })}
+            className="size-4 text-[color:var(--gold)]"
+          />
+          Publish Article Live
+        </label>
+      </div>
+
+      <div className="flex flex-wrap gap-4 pt-4">
         <button
           onClick={save}
           disabled={saving}
-          className="bg-foreground text-background px-6 py-3 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
+          className="bg-foreground text-background px-8 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors disabled:opacity-50"
         >
-          {saving ? "Saving…" : isNew ? "Create post" : "Save Post"}
+          {saving ? "Saving…" : isNew ? "Publish New Post" : "Save Blog Post & SEO"}
         </button>
         {!isNew && (
           <button
             onClick={remove}
-            className="border border-destructive text-destructive px-6 py-3 text-xs uppercase tracking-[0.22em] hover:bg-destructive hover:text-white transition-colors"
+            className="border border-destructive text-destructive px-6 py-4 text-xs uppercase tracking-[0.24em] hover:bg-destructive hover:text-white transition-colors"
           >
-            Delete
+            Delete Post
           </button>
         )}
       </div>
@@ -954,7 +1675,7 @@ function ServicesPanel() {
   if (editingIndex !== null && items[editingIndex]) {
     const s = items[editingIndex];
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <button
           onClick={() => setEditingIndex(null)}
           className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-[color:var(--gold)] font-medium"
@@ -962,75 +1683,122 @@ function ServicesPanel() {
           ← Back to Services List
         </button>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <Input label="Title" value={s.title} onChange={(v) => {
-            const updated = [...items];
-            updated[editingIndex] = { ...s, title: v, slug: slugify(v) };
-            setItems(updated);
-          }} />
-          <Input label="Slug (URL)" value={s.slug} onChange={(v) => {
-            const updated = [...items];
-            updated[editingIndex] = { ...s, slug: v };
-            setItems(updated);
-          }} />
-
-          <div className="flex flex-col gap-2">
-            <label className="kbd-eyebrow text-muted-foreground">Category</label>
-            <select
-              value={s.category}
-              onChange={(e) => {
-                const updated = [...items];
-                updated[editingIndex] = { ...s, category: e.target.value as any };
-                setItems(updated);
-              }}
-              className="bg-transparent border-b border-border py-3 text-sm"
-            >
-              {["Photography", "Videography", "Events", "Commercial"].map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-2">
-            <Input label="Short Description (Card Subtitle)" value={s.short} onChange={(v) => {
+        <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+          <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3">Service Details</h3>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Input label="Title" value={s.title} onChange={(v) => {
               const updated = [...items];
-              updated[editingIndex] = { ...s, short: v };
+              updated[editingIndex] = { ...s, title: v, slug: slugify(v) };
               setItems(updated);
             }} />
-          </div>
+            <Input label="Slug (URL)" value={s.slug} onChange={(v) => {
+              const updated = [...items];
+              updated[editingIndex] = { ...s, slug: v };
+              setItems(updated);
+            }} />
 
-          <div className="md:col-span-2">
-            <label className="kbd-eyebrow text-muted-foreground">Full Intro Text</label>
-            <textarea
-              value={s.intro}
-              onChange={(e) => {
+            <div className="flex flex-col gap-2">
+              <label className="kbd-eyebrow text-muted-foreground">Category</label>
+              <select
+                value={s.category}
+                onChange={(e) => {
+                  const updated = [...items];
+                  updated[editingIndex] = { ...s, category: e.target.value as any };
+                  setItems(updated);
+                }}
+                className="bg-transparent border-b border-border py-3 text-sm"
+              >
+                {["Photography", "Videography", "Events", "Commercial"].map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <Input label="Short Description (Card Subtitle)" value={s.short} onChange={(v) => {
                 const updated = [...items];
-                updated[editingIndex] = { ...s, intro: e.target.value };
+                updated[editingIndex] = { ...s, short: v };
                 setItems(updated);
-              }}
-              rows={4}
-              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
-            />
-          </div>
+              }} />
+            </div>
 
-          <div className="md:col-span-2">
-            <label className="kbd-eyebrow text-muted-foreground">Hero Image Banner</label>
-            <div className="mt-3 flex items-center gap-4">
-              {s.hero && <img src={s.hero} alt="" className="w-32 h-32 object-cover bg-black" />}
-              <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
-                <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload Hero Banner"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => e.target.files?.[0] && uploadHero(e.target.files[0], editingIndex)}
-                />
-              </label>
+            <div className="md:col-span-2">
+              <label className="kbd-eyebrow text-muted-foreground">Full Intro Text</label>
+              <textarea
+                value={s.intro}
+                onChange={(e) => {
+                  const updated = [...items];
+                  updated[editingIndex] = { ...s, intro: e.target.value };
+                  setItems(updated);
+                }}
+                rows={4}
+                className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="kbd-eyebrow text-muted-foreground">Hero Image Banner</label>
+              <div className="mt-3 flex items-center gap-4">
+                {s.hero && <img src={s.hero} alt="" className="w-32 h-32 object-cover bg-black" />}
+                <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
+                  <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload Hero Banner"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && uploadHero(e.target.files[0], editingIndex)}
+                  />
+                </label>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="pt-6 flex flex-wrap gap-4">
+        <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+          <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3 flex items-center gap-2">
+            <Search className="size-5" /> Service SEO Settings
+          </h3>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <Input
+                label="SEO Meta Title"
+                value={(s as any).meta_title ?? `${s.title} — Kamal Studios`}
+                onChange={(v) => {
+                  const updated = [...items];
+                  updated[editingIndex] = { ...s, meta_title: v } as any;
+                  setItems(updated);
+                }}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="kbd-eyebrow text-muted-foreground">SEO Meta Description</label>
+              <textarea
+                value={(s as any).meta_description ?? s.short}
+                onChange={(e) => {
+                  const updated = [...items];
+                  updated[editingIndex] = { ...s, meta_description: e.target.value } as any;
+                  setItems(updated);
+                }}
+                rows={2}
+                className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Input
+                label="SEO Keywords (Comma Separated)"
+                value={(s as any).meta_keywords ?? ""}
+                placeholder="e.g. wedding photography, luxury bridal shoot, 4k cinema films"
+                onChange={(v) => {
+                  const updated = [...items];
+                  updated[editingIndex] = { ...s, meta_keywords: v } as any;
+                  setItems(updated);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-4 flex flex-wrap gap-4">
           <button
             onClick={() => {
               saveAll(items);
@@ -1039,7 +1807,7 @@ function ServicesPanel() {
             disabled={saving}
             className="bg-foreground text-background px-8 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
           >
-            {saving ? "Saving…" : "Save Service"}
+            {saving ? "Saving…" : "Save Service & SEO"}
           </button>
         </div>
       </div>
@@ -1077,7 +1845,7 @@ function ServicesPanel() {
                 onClick={() => setEditingIndex(idx)}
                 className="text-xs uppercase tracking-widest text-[color:var(--gold)] font-medium hover:underline"
               >
-                Edit Details →
+                Edit Details & SEO →
               </button>
               <button
                 onClick={() => removeItem(idx)}
@@ -1168,7 +1936,7 @@ function LocationsPanel() {
   if (editingIndex !== null && items[editingIndex]) {
     const l = items[editingIndex];
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <button
           onClick={() => setEditingIndex(null)}
           className="text-xs uppercase tracking-[0.22em] text-muted-foreground hover:text-[color:var(--gold)] font-medium"
@@ -1176,64 +1944,111 @@ function LocationsPanel() {
           ← Back to Locations List
         </button>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <Input label="Location Name (e.g. Jaipur)" value={l.name} onChange={(v) => {
-            const updated = [...items];
-            updated[editingIndex] = { ...l, name: v, slug: slugify(v) };
-            setItems(updated);
-          }} />
-          <Input label="Region Tag (e.g. Rajasthan · Pink City)" value={l.region} onChange={(v) => {
-            const updated = [...items];
-            updated[editingIndex] = { ...l, region: v };
-            setItems(updated);
-          }} />
-          <div className="md:col-span-2">
-            <Input label="Page Title (h1)" value={l.title} onChange={(v) => {
+        <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+          <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3">Location Details</h3>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Input label="Location Name (e.g. Jaipur)" value={l.name} onChange={(v) => {
               const updated = [...items];
-              updated[editingIndex] = { ...l, title: v };
+              updated[editingIndex] = { ...l, name: v, slug: slugify(v) };
               setItems(updated);
             }} />
-          </div>
-          <div className="md:col-span-2">
-            <Input label="Tagline" value={l.tagline} onChange={(v) => {
+            <Input label="Region Tag (e.g. Rajasthan · Pink City)" value={l.region} onChange={(v) => {
               const updated = [...items];
-              updated[editingIndex] = { ...l, tagline: v };
+              updated[editingIndex] = { ...l, region: v };
               setItems(updated);
             }} />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="kbd-eyebrow text-muted-foreground">Intro Narrative</label>
-            <textarea
-              value={l.intro}
-              onChange={(e) => {
+            <div className="md:col-span-2">
+              <Input label="Page Title (h1)" value={l.title} onChange={(v) => {
                 const updated = [...items];
-                updated[editingIndex] = { ...l, intro: e.target.value };
+                updated[editingIndex] = { ...l, title: v };
                 setItems(updated);
-              }}
-              rows={4}
-              className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
-            />
-          </div>
+              }} />
+            </div>
+            <div className="md:col-span-2">
+              <Input label="Tagline" value={l.tagline} onChange={(v) => {
+                const updated = [...items];
+                updated[editingIndex] = { ...l, tagline: v };
+                setItems(updated);
+              }} />
+            </div>
 
-          <div className="md:col-span-2">
-            <label className="kbd-eyebrow text-muted-foreground">Hero Image Banner</label>
-            <div className="mt-3 flex items-center gap-4">
-              {l.heroImage && <img src={l.heroImage} alt="" className="w-32 h-32 object-cover bg-black" />}
-              <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
-                <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload Hero Banner"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => e.target.files?.[0] && uploadHero(e.target.files[0], editingIndex)}
-                />
-              </label>
+            <div className="md:col-span-2">
+              <label className="kbd-eyebrow text-muted-foreground">Intro Narrative</label>
+              <textarea
+                value={l.intro}
+                onChange={(e) => {
+                  const updated = [...items];
+                  updated[editingIndex] = { ...l, intro: e.target.value };
+                  setItems(updated);
+                }}
+                rows={4}
+                className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="kbd-eyebrow text-muted-foreground">Hero Image Banner</label>
+              <div className="mt-3 flex items-center gap-4">
+                {l.heroImage && <img src={l.heroImage} alt="" className="w-32 h-32 object-cover bg-black" />}
+                <label className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] cursor-pointer">
+                  <Upload className="size-4" /> {uploading ? "Uploading…" : "Upload Hero Banner"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && uploadHero(e.target.files[0], editingIndex)}
+                  />
+                </label>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="pt-6 flex flex-wrap gap-4">
+        <div className="border border-border p-8 bg-card space-y-6 rounded-sm">
+          <h3 className="font-display text-2xl text-[color:var(--gold)] border-b border-border pb-3 flex items-center gap-2">
+            <Search className="size-5" /> Location SEO Settings
+          </h3>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <Input
+                label="SEO Meta Title"
+                value={(l as any).meta_title ?? `${l.title} — Kamal Studios`}
+                onChange={(v) => {
+                  const updated = [...items];
+                  updated[editingIndex] = { ...l, meta_title: v } as any;
+                  setItems(updated);
+                }}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="kbd-eyebrow text-muted-foreground">SEO Meta Description</label>
+              <textarea
+                value={(l as any).meta_description ?? l.tagline}
+                onChange={(e) => {
+                  const updated = [...items];
+                  updated[editingIndex] = { ...l, meta_description: e.target.value } as any;
+                  setItems(updated);
+                }}
+                rows={2}
+                className="mt-2 w-full bg-transparent border-b border-border py-3 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Input
+                label="SEO Keywords (Comma Separated)"
+                value={(l as any).meta_keywords ?? ""}
+                placeholder={`e.g. ${l.name} wedding photographer, luxury resort photography in ${l.name}`}
+                onChange={(v) => {
+                  const updated = [...items];
+                  updated[editingIndex] = { ...l, meta_keywords: v } as any;
+                  setItems(updated);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-4 flex flex-wrap gap-4">
           <button
             onClick={() => {
               saveAll(items);
@@ -1242,7 +2057,7 @@ function LocationsPanel() {
             disabled={saving}
             className="bg-foreground text-background px-8 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
           >
-            {saving ? "Saving…" : "Save Location"}
+            {saving ? "Saving…" : "Save Location & SEO"}
           </button>
         </div>
       </div>
@@ -1280,7 +2095,7 @@ function LocationsPanel() {
                 onClick={() => setEditingIndex(idx)}
                 className="text-xs uppercase tracking-widest text-[color:var(--gold)] font-medium hover:underline"
               >
-                Edit Location →
+                Edit Location & SEO →
               </button>
               <button
                 onClick={() => removeItem(idx)}
@@ -1507,7 +2322,7 @@ function SettingsPanel() {
   );
 }
 
-/* ─────────── Content Panel ─────────── */
+/* ─────────── Content Panel (Site Identity) ─────────── */
 
 function ContentPanel() {
   const { settings, refresh } = useSiteContent();

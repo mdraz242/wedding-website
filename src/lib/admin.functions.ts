@@ -567,4 +567,72 @@ export const updateCustomReviews = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/* ─────────── Custom Pages SEO & Content ─────────── */
+
+let mockCustomPagesSEO: any = null;
+
+export const getCustomPagesSEO = createServerFn({ method: "GET" }).handler(async () => {
+  if (isMockMode) {
+    return { pages: mockCustomPagesSEO };
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("site_content")
+    .select("value")
+    .eq("key", "custom_pages_seo")
+    .maybeSingle();
+  return { pages: data?.value || null };
+});
+
+export const updateCustomPagesSEO = createServerFn({ method: "POST" })
+  .inputValidator((d: { pages: any }) => d)
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    if (isMockMode) {
+      mockCustomPagesSEO = data.pages;
+      return { ok: true as const };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("site_content")
+      .upsert({ key: "custom_pages_seo", value: data.pages, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const };
+  });
+
+/* ─────────── Custom Home Sections ─────────── */
+
+let mockCustomHomeSections: any = null;
+
+export const getCustomHomeSections = createServerFn({ method: "GET" }).handler(async () => {
+  if (isMockMode) {
+    return { sections: mockCustomHomeSections };
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("site_content")
+    .select("value")
+    .eq("key", "custom_home_sections")
+    .maybeSingle();
+  return { sections: data?.value || null };
+});
+
+export const updateCustomHomeSections = createServerFn({ method: "POST" })
+  .inputValidator((d: { sections: any }) => d)
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    if (isMockMode) {
+      mockCustomHomeSections = data.sections;
+      return { ok: true as const };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("site_content")
+      .upsert({ key: "custom_home_sections", value: data.sections, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const };
+  });
+
+
+
 

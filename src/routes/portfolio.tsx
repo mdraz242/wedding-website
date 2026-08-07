@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
 import { categoryImages, type CategoryKey } from "@/lib/site";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/portfolio")({
@@ -39,6 +40,8 @@ type Album = {
 };
 
 function Portfolio() {
+  const { getPageSEO } = useSiteContent();
+  const page = getPageSEO("portfolio");
   const [cat, setCat] = useState<(typeof CATS)[number]>("All");
   const [albums, setAlbums] = useState<Album[]>([]);
 
@@ -51,7 +54,6 @@ function Portfolio() {
       .then(({ data }) => setAlbums((data as Album[]) ?? []));
   }, []);
 
-  // Build a flat, deduplicated gallery from unique per-category collections.
   const shots = useMemo(() => {
     const cats: CategoryKey[] =
       cat === "All"
@@ -70,12 +72,15 @@ function Portfolio() {
   }, [cat]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
       <section className="pt-40 pb-16">
         <div className="container-lux">
           <div className="kbd-eyebrow text-[color:var(--gold)]">Portfolio</div>
-          <h1 className="mt-4 font-display text-5xl md:text-7xl">A quiet portfolio.</h1>
+          <h1 className="mt-4 font-display text-5xl md:text-7xl">{page.heading || "A quiet portfolio."}</h1>
+          <p className="mt-4 text-muted-foreground max-w-xl text-base md:text-lg leading-relaxed">
+            {page.subheading || "Curated moments of love, splendour, and emotional intimacy."}
+          </p>
         </div>
       </section>
 
@@ -87,7 +92,7 @@ function Portfolio() {
               <Link
                 key={a.id}
                 to="/portfolio"
-                className="group block border border-border bg-card hover:border-[color:var(--gold)] transition-colors"
+                className="group block border border-border bg-card hover:border-[color:var(--gold)] transition-colors rounded-sm overflow-hidden"
               >
                 <div className="aspect-[4/5] overflow-hidden bg-black">
                   {a.cover_url && (
@@ -117,7 +122,7 @@ function Portfolio() {
             key={c}
             onClick={() => setCat(c)}
             className={`px-4 py-2 text-xs uppercase tracking-[0.22em] border transition-colors ${
-              cat === c ? "bg-foreground text-background border-foreground" : "border-border hover:border-foreground"
+              cat === c ? "bg-foreground text-background border-foreground font-semibold" : "border-border hover:border-foreground"
             }`}
           >
             {c}
@@ -125,11 +130,10 @@ function Portfolio() {
         ))}
       </div>
 
-      {/* Perfectly aligned luxury grid — every tile identical aspect. */}
       <section className="container-lux pb-24">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           {shots.map((s, i) => (
-            <figure key={s.src + i} className="group relative overflow-hidden bg-black aspect-[4/5]">
+            <figure key={s.src + i} className="group relative overflow-hidden bg-black aspect-[4/5] rounded-sm">
               <img
                 src={s.src}
                 alt={s.title}
