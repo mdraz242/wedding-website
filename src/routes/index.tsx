@@ -87,7 +87,7 @@ function LogoReveal() {
       <img
         src={settings.logoUrl}
         alt={settings.name}
-        className="max-w-[78%] md:max-w-md w-auto h-auto animate-[logoIn_1.8s_cubic-bezier(.2,.7,.2,1)_both]"
+        className="max-w-[94%] md:max-w-xl w-auto h-auto animate-[logoIn_1.8s_cubic-bezier(.2,.7,.2,1)_both]"
       />
       <style>{`@keyframes logoIn { 0%{opacity:0;transform:scale(.92);filter:blur(6px)} 55%{opacity:1;filter:blur(0)} 100%{opacity:1;transform:scale(1)} }`}</style>
     </div>

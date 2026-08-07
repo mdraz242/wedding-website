@@ -6,7 +6,6 @@ import { useSiteContent } from "@/hooks/useSiteContent";
 
 const SERVICE_CATS: ServiceCategory[] = ["Photography", "Videography", "Events", "Commercial"];
 
-// Only the home page renders a full-bleed dark hero behind the navbar.
 const DARK_HERO_ROUTES = new Set<string>(["/"]);
 
 export function SiteNav() {
@@ -55,12 +54,12 @@ export function SiteNav() {
         }`}
         onMouseLeave={leave}
       >
-        <div className="container-lux flex h-16 items-center justify-between">
+        <div className="container-lux flex h-20 items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
             <BrandMark />
             <div className="hidden sm:block leading-none">
-              <div className="font-display text-lg tracking-wide">Kamal Studios</div>
-              <div className="kbd-eyebrow text-[9px] opacity-70 mt-1">Since 1966</div>
+              <div className="font-display text-xl tracking-wide">{settings.name}</div>
+              <div className="kbd-eyebrow text-[9px] opacity-70 mt-1">Since {settings.since}</div>
             </div>
           </Link>
 
@@ -125,10 +124,10 @@ export function SiteNav() {
       {/* Mobile menu */}
       {mobile && (
         <div className="fixed inset-0 z-[60] bg-[color:var(--ink)] text-white overflow-y-auto">
-          <div className="container-lux flex items-center justify-between h-16">
+          <div className="container-lux flex items-center justify-between h-20">
             <Link to="/" onClick={() => setMobile(false)} className="flex items-center gap-3">
               <BrandMark />
-              <span className="font-display text-lg">Kamal Studios</span>
+              <span className="font-display text-xl">{settings.name}</span>
             </Link>
             <button aria-label="Close" onClick={() => setMobile(false)} className="p-2">
               <X className="size-6" />
@@ -215,10 +214,9 @@ function BrandMark() {
     <img
       src={settings.logoUrl}
       alt={settings.name}
-      className="h-10 w-auto object-contain"
+      className="h-12 sm:h-14 w-auto object-contain"
       loading="eager"
       decoding="async"
     />
   );
 }
-

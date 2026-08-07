@@ -11,7 +11,7 @@ export function SiteFooter() {
     <footer className="bg-[color:var(--ink)] text-white">
       <div className="container-lux py-20 grid gap-12 md:grid-cols-4">
         <div className="md:col-span-1">
-          <img src={settings.logoUrl} alt={settings.name} className="h-16 w-auto object-contain" />
+          <img src={settings.logoUrl} alt={settings.name} className="h-20 w-auto object-contain" />
           <div className="kbd-eyebrow text-[color:var(--gold)] mt-4">{settings.tagline}</div>
           <p className="mt-6 text-sm text-white/60 max-w-xs leading-relaxed">
             A photography and cinematography atelier serving India and the world for six decades.
