@@ -1298,6 +1298,9 @@ function PortfolioPanel() {
   const handleSaveCatImages = async () => {
     setSavingCat(true);
     try {
+      localStorage.setItem("ks_custom_category_images", JSON.stringify(localCatImages));
+    } catch {}
+    try {
       const r = await saveCatImages({ data: { images: localCatImages } });
       if (!r.ok) {
         alert("Failed to save category images: " + ("error" in r ? r.error : "Unknown error"));

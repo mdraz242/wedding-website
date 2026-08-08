@@ -211,23 +211,56 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
       if (locRes?.locations) setCustomLocations(locRes.locations);
       if (revRes?.reviews) setCustomReviews(revRes.reviews);
       if (pagesRes?.pages) setCustomPagesSEO(pagesRes.pages);
-      if (catImgRes?.images) setCustomCategoryImages(catImgRes.images);
-      if (navRes?.navigation) setCustomNavigation(navRes.navigation);
-      if (filmRes?.films) setCustomFilms(filmRes.films);
-      if (homeRes?.sections) {
+
+      // LocalStorage fallbacks for serverless stateless environments
+      let catImgs = catImgRes?.images;
+      if (!catImgs) {
+        try {
+          const l = localStorage.getItem("ks_custom_category_images");
+          if (l) catImgs = JSON.parse(l);
+        } catch {}
+      }
+      if (catImgs) setCustomCategoryImages(catImgs);
+
+      let navData = navRes?.navigation;
+      if (!navData) {
+        try {
+          const l = localStorage.getItem("ks_custom_navigation");
+          if (l) navData = JSON.parse(l);
+        } catch {}
+      }
+      if (navData) setCustomNavigation(navData);
+
+      let filmData = filmRes?.films;
+      if (!filmData) {
+        try {
+          const l = localStorage.getItem("ks_custom_films");
+          if (l) filmData = JSON.parse(l);
+        } catch {}
+      }
+      if (filmData) setCustomFilms(filmData);
+
+      let homeData = homeRes?.sections;
+      if (!homeData) {
+        try {
+          const l = localStorage.getItem("ks_custom_home_sections");
+          if (l) homeData = JSON.parse(l);
+        } catch {}
+      }
+      if (homeData) {
         setHomeSections({
           ...defaultHomeSections,
-          ...homeRes.sections,
-          hero: { ...defaultHomeSections.hero, ...(homeRes.sections.hero || {}) },
-          featured_services: { ...defaultHomeSections.featured_services, ...(homeRes.sections.featured_services || {}) },
-          why_us: { ...defaultHomeSections.why_us, ...(homeRes.sections.why_us || {}) },
-          portfolio_preview: { ...defaultHomeSections.portfolio_preview, ...(homeRes.sections.portfolio_preview || {}) },
-          films_section: { ...defaultHomeSections.films_section, ...(homeRes.sections.films_section || {}) },
-          google_reviews: { ...defaultHomeSections.google_reviews, ...(homeRes.sections.google_reviews || {}) },
-          process_section: { ...defaultHomeSections.process_section, ...(homeRes.sections.process_section || {}) },
-          service_areas_section: { ...defaultHomeSections.service_areas_section, ...(homeRes.sections.service_areas_section || {}) },
-          faq_section: { ...defaultHomeSections.faq_section, ...(homeRes.sections.faq_section || {}) },
-          final_cta: { ...defaultHomeSections.final_cta, ...(homeRes.sections.final_cta || {}) },
+          ...homeData,
+          hero: { ...defaultHomeSections.hero, ...(homeData.hero || {}) },
+          featured_services: { ...defaultHomeSections.featured_services, ...(homeData.featured_services || {}) },
+          why_us: { ...defaultHomeSections.why_us, ...(homeData.why_us || {}) },
+          portfolio_preview: { ...defaultHomeSections.portfolio_preview, ...(homeData.portfolio_preview || {}) },
+          films_section: { ...defaultHomeSections.films_section, ...(homeData.films_section || {}) },
+          google_reviews: { ...defaultHomeSections.google_reviews, ...(homeData.google_reviews || {}) },
+          process_section: { ...defaultHomeSections.process_section, ...(homeData.process_section || {}) },
+          service_areas_section: { ...defaultHomeSections.service_areas_section, ...(homeData.service_areas_section || {}) },
+          faq_section: { ...defaultHomeSections.faq_section, ...(homeData.faq_section || {}) },
+          final_cta: { ...defaultHomeSections.final_cta, ...(homeData.final_cta || {}) },
         });
       }
     } catch (err) {
@@ -255,10 +288,10 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
   );
 
   const categoryImages = useMemo(() => {
-    if (!customCategoryImages) return defaultCategoryImages;
-    const merged = { ...defaultCategoryImages };
-    for (const key of Object.keys(merged) as (keyof typeof defaultCategoryImages)[]) {
-      if (Array.isArray(customCategoryImages[key]) && customCategoryImages[key].length > 0) {
+    const merged: Record<string, string[]> = { ...defaultCategoryImages };
+    if (!customCategoryImages) return merged;
+    for (const key of Object.keys(customCategoryImages)) {
+      if (Array.isArray(customCategoryImages[key])) {
         merged[key] = customCategoryImages[key];
       }
     }

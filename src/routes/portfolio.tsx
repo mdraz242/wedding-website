@@ -100,7 +100,16 @@ function Portfolio() {
       }
 
       // Append category images managed from admin / site content
-      const catImgs = categoryImages[c] || [];
+      const normCat = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+      let catImgs: string[] = categoryImages[c] || [];
+      if (!catImgs.length) {
+        for (const [k, imgs] of Object.entries(categoryImages)) {
+          if (normCat(k) === normCat(c) && Array.isArray(imgs)) {
+            catImgs = imgs;
+            break;
+          }
+        }
+      }
       for (const src of catImgs) {
         if (seen.has(src)) continue;
         seen.add(src);
