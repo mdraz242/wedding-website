@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
@@ -44,13 +44,53 @@ function Blog() {
   useEffect(() => {
     supabase
       .from("blog_posts")
-      .select("id,slug,title,excerpt,cover_url,category,published_at")
+      .select("id,slug,title,excerpt,cover_url,category,published_at,published")
       .eq("published", true)
       .order("published_at", { ascending: false })
-      .then(({ data }) => setPosts(data ?? []));
+      .then(({ data }) => {
+        let dbList: Post[] = (data as unknown as Post[]) ?? [];
+        try {
+          const l = localStorage.getItem("ks_custom_blog_posts");
+          if (l) {
+            const localPosts: Post[] = JSON.parse(l);
+            const pubLocal = localPosts.filter((p: any) => p.published !== false);
+            const dbSlugs = new Set(dbList.map((p) => p.slug));
+            for (const lp of pubLocal) {
+              if (!dbSlugs.has(lp.slug)) {
+                dbList.push(lp);
+              }
+            }
+          }
+        } catch {}
+        setPosts(dbList);
+      })
+      .catch(() => {
+        try {
+          const l = localStorage.getItem("ks_custom_blog_posts");
+          if (l) {
+            const localPosts: Post[] = JSON.parse(l);
+            setPosts(localPosts.filter((p: any) => p.published !== false));
+          } else {
+            setPosts([]);
+          }
+        } catch {
+          setPosts([]);
+        }
+      });
   }, []);
 
-  const list = posts && posts.length ? posts : fallback;
+  const list = useMemo(() => {
+    if (posts && posts.length > 0) return posts;
+    try {
+      const l = localStorage.getItem("ks_custom_blog_posts");
+      if (l) {
+        const localPosts: Post[] = JSON.parse(l);
+        const pub = localPosts.filter((p: any) => p.published !== false);
+        if (pub.length > 0) return pub;
+      }
+    } catch {}
+    return fallback;
+  }, [posts]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

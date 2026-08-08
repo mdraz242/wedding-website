@@ -42,7 +42,32 @@ function Post() {
       .eq("slug", slug)
       .eq("published", true)
       .maybeSingle()
-      .then(({ data }) => setPost((data as Post) ?? null));
+      .then(({ data }) => {
+        if (data) {
+          setPost(data as Post);
+        } else {
+          try {
+            const l = localStorage.getItem("ks_custom_blog_posts");
+            if (l) {
+              const localPosts: Post[] = JSON.parse(l);
+              const found = localPosts.find((p) => p.slug === slug);
+              if (found) return setPost(found);
+            }
+          } catch {}
+          setPost(null);
+        }
+      })
+      .catch(() => {
+        try {
+          const l = localStorage.getItem("ks_custom_blog_posts");
+          if (l) {
+            const localPosts: Post[] = JSON.parse(l);
+            const found = localPosts.find((p) => p.slug === slug);
+            if (found) return setPost(found);
+          }
+        } catch {}
+        setPost(null);
+      });
   }, [slug]);
 
   if (post === undefined) return <div className="min-h-screen bg-background" />;

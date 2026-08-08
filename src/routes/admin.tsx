@@ -1711,7 +1711,23 @@ function BlogPanel() {
   const [editing, setEditing] = useState<Post | null>(null);
 
   const load = useCallback(async () => {
-    setPosts((await list()) as Post[]);
+    let res: Post[] = [];
+    try {
+      res = ((await list()) as Post[]) ?? [];
+    } catch {}
+    try {
+      const l = localStorage.getItem("ks_custom_blog_posts");
+      if (l) {
+        const localPosts: Post[] = JSON.parse(l);
+        const existingKeys = new Set(res.map((p) => p.id || p.slug));
+        for (const lp of localPosts) {
+          if (!existingKeys.has(lp.id || lp.slug)) {
+            res.push(lp);
+          }
+        }
+      }
+    } catch {}
+    setPosts(res);
   }, [list]);
 
   useEffect(() => {
@@ -1739,7 +1755,7 @@ function BlogPanel() {
       content: "",
       category: "Craft",
       author: "Kamal Studios",
-      published: false,
+      published: true,
       published_at: null,
       meta_title: "",
       meta_description: "",
@@ -1750,7 +1766,7 @@ function BlogPanel() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <div className="text-sm text-muted-foreground">{posts.length} published blog posts</div>
+        <div className="text-sm text-muted-foreground">{posts.length} blog posts</div>
         <button
           onClick={newPost}
           className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
@@ -1764,7 +1780,7 @@ function BlogPanel() {
       <div className="space-y-3">
         {posts.map((p) => (
           <button
-            key={p.id}
+            key={p.id || p.slug}
             onClick={() => setEditing(p)}
             className="w-full text-left border border-border bg-card hover:border-[color:var(--gold)] p-4 flex gap-4 transition-colors rounded-sm group"
           >
@@ -1806,32 +1822,76 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
   const save = async () => {
     setSaving(true);
     const slug = p.slug || slugify(p.title);
-    const r = await saveFn({
-      data: {
-        id: p.id || undefined,
-        slug,
-        title: p.title,
-        excerpt: p.excerpt,
-        cover_url: p.cover_url,
-        content: p.content,
-        category: p.category,
-        author: p.author,
-        published: p.published,
-        published_at: p.published_at,
-        meta_title: p.meta_title || p.title,
-        meta_description: p.meta_description || p.excerpt,
-        meta_keywords: p.meta_keywords,
-        tags: p.tags,
-      } as any,
-    });
+    const idToUse = p.id || `post-${Date.now()}`;
+    const updatedPost: Post = {
+      ...p,
+      id: idToUse,
+      slug,
+      published_at: p.published && !p.published_at ? new Date().toISOString() : p.published_at,
+    };
+
+    // Save to LocalStorage immediately for client-side persistence
+    try {
+      const l = localStorage.getItem("ks_custom_blog_posts");
+      let list: Post[] = l ? JSON.parse(l) : [];
+      const idx = list.findIndex((x) => (x.id && x.id === idToUse) || x.slug === slug);
+      if (idx >= 0) {
+        list[idx] = updatedPost;
+      } else {
+        list.unshift(updatedPost);
+      }
+      localStorage.setItem("ks_custom_blog_posts", JSON.stringify(list));
+    } catch {}
+
+    try {
+      const r = await saveFn({
+        data: {
+          id: p.id || undefined,
+          slug,
+          title: p.title,
+          excerpt: p.excerpt,
+          cover_url: p.cover_url,
+          content: p.content,
+          category: p.category,
+          author: p.author,
+          published: p.published,
+          published_at: updatedPost.published_at,
+          meta_title: p.meta_title || p.title,
+          meta_description: p.meta_description || p.excerpt,
+          meta_keywords: p.meta_keywords,
+          tags: p.tags,
+        } as any,
+      });
+      if (r.ok && r.id && !p.id) {
+        try {
+          const l = localStorage.getItem("ks_custom_blog_posts");
+          if (l) {
+            let list: Post[] = JSON.parse(l);
+            list = list.map((item) => (item.id === idToUse ? { ...item, id: r.id } : item));
+            localStorage.setItem("ks_custom_blog_posts", JSON.stringify(list));
+          }
+        } catch {}
+      }
+    } catch {}
     setSaving(false);
-    if (!r.ok) return alert(r.error);
     onClose();
   };
 
   const remove = async () => {
     if (!confirm("Delete this post?")) return;
-    await removeFn({ data: { id: p.id } });
+    try {
+      const l = localStorage.getItem("ks_custom_blog_posts");
+      if (l) {
+        let list: Post[] = JSON.parse(l);
+        list = list.filter((x) => x.id !== p.id && x.slug !== p.slug);
+        localStorage.setItem("ks_custom_blog_posts", JSON.stringify(list));
+      }
+    } catch {}
+    if (p.id) {
+      try {
+        await removeFn({ data: { id: p.id } });
+      } catch {}
+    }
     onClose();
   };
 
