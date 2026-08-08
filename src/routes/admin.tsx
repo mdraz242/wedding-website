@@ -1836,12 +1836,12 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
 
   const save = async () => {
     setSaving(true);
-    const slug = p.slug || slugify(p.title);
+    const cleanSlug = slugify(p.slug) || slugify(p.title) || `post-${Date.now()}`;
     const idToUse = p.id || `post-${Date.now()}`;
     const updatedPost: Post = {
       ...p,
       id: idToUse,
-      slug,
+      slug: cleanSlug,
       published_at: p.published && !p.published_at ? new Date().toISOString() : p.published_at,
     };
 
@@ -1859,7 +1859,7 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
     try {
       const l = localStorage.getItem("ks_custom_blog_posts");
       let list: Post[] = l ? JSON.parse(l) : [];
-      const idx = list.findIndex((x) => (x.id && x.id === idToUse) || x.slug === slug);
+      const idx = list.findIndex((x) => (x.id && x.id === idToUse) || x.slug === cleanSlug);
       if (idx >= 0) {
         list[idx] = updatedPost;
       } else {
@@ -1872,7 +1872,7 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
       const r = await saveFn({
         data: {
           id: p.id || undefined,
-          slug,
+          slug: cleanSlug,
           title: p.title,
           excerpt: p.excerpt,
           cover_url: p.cover_url,

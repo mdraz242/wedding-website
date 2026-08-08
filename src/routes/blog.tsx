@@ -17,6 +17,16 @@ export const Route = createFileRoute("/blog")({
   component: Blog,
 });
 
+function slugify(s: string) {
+  if (!s) return "";
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 type Post = {
   id: string;
   slug: string;
@@ -120,19 +130,22 @@ function Blog() {
       </section>
 
       <section className="container-lux pb-24 grid gap-8 md:grid-cols-3">
-        {list.map((p) => (
-          <Link key={p.slug} to="/blog/$slug" params={{ slug: p.slug }} className="group block border border-border bg-card rounded-sm overflow-hidden p-4">
-            <div className="aspect-[4/5] overflow-hidden bg-black rounded-sm">
-              {p.cover_url && <img src={p.cover_url} alt={p.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700" />}
-            </div>
-            <div className="mt-4">
-              <div className="text-xs text-muted-foreground uppercase tracking-[0.22em]">{p.category} · {p.published_at ? new Date(p.published_at).toLocaleDateString() : ""}</div>
-              <div className="mt-2 font-display text-2xl group-hover:text-[color:var(--gold)] transition-colors">{p.title}</div>
-              <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{p.excerpt}</p>
-              <div className="mt-4 inline-flex items-center gap-1 text-xs uppercase tracking-[0.22em] text-[color:var(--gold)] font-medium">Read Article</div>
-            </div>
-          </Link>
-        ))}
+        {list.map((p) => {
+          const postSlug = slugify(p.slug) || slugify(p.title) || p.id;
+          return (
+            <Link key={p.id || postSlug} to="/blog/$slug" params={{ slug: postSlug }} className="group block border border-border bg-card rounded-sm overflow-hidden p-4">
+              <div className="aspect-[4/5] overflow-hidden bg-black rounded-sm">
+                {p.cover_url && <img src={p.cover_url} alt={p.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700" />}
+              </div>
+              <div className="mt-4">
+                <div className="text-xs text-muted-foreground uppercase tracking-[0.22em]">{p.category} · {p.published_at ? new Date(p.published_at).toLocaleDateString() : ""}</div>
+                <div className="mt-2 font-display text-2xl group-hover:text-[color:var(--gold)] transition-colors">{p.title}</div>
+                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{p.excerpt}</p>
+                <div className="mt-4 inline-flex items-center gap-1 text-xs uppercase tracking-[0.22em] text-[color:var(--gold)] font-medium group-hover:underline">Read Article</div>
+              </div>
+            </Link>
+          );
+        })}
       </section>
       <SiteFooter />
     </div>

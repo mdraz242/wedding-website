@@ -42,7 +42,17 @@ function Post() {
       if (d) deletedKeys = new Set(JSON.parse(d));
     } catch {}
 
-    if (deletedKeys.has(slug)) {
+    const norm = (s: string) => {
+      if (!s) return "";
+      try {
+        s = decodeURIComponent(s);
+      } catch {}
+      return s.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-");
+    };
+
+    const reqSlug = norm(slug);
+
+    if (deletedKeys.has(reqSlug) || deletedKeys.has(slug)) {
       setPost(null);
       return;
     }
@@ -51,7 +61,9 @@ function Post() {
       const l = localStorage.getItem("ks_custom_blog_posts");
       if (l) {
         const localPosts: Post[] = JSON.parse(l);
-        const found = localPosts.find((p) => p.slug === slug);
+        const found = localPosts.find(
+          (p) => norm(p.slug) === reqSlug || norm(p.title) === reqSlug || p.id === slug || p.slug === slug
+        );
         if (found) {
           if (found.id && deletedKeys.has(found.id)) {
             setPost(null);
