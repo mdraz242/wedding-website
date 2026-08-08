@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
 import { supabase } from "@/integrations/supabase/client";
+import { img } from "@/lib/site";
 
 export const Route = createFileRoute("/blog/$slug")({
   head: ({ params }) => ({
@@ -31,6 +32,15 @@ type Post = {
   tags?: string;
 };
 
+const fallbackArticles = [
+  { slug: "destination-wedding-shoot", title: "How to plan a destination wedding shoot", published_at: "2026-11-12", category: "Weddings", cover_url: img.destination, excerpt: "A step-by-step guide from consult to delivery.", content: "A step-by-step guide from consult to delivery. We plan every frame, lighting set-up, and timeline with your planner to ensure seamless execution." },
+  { slug: "pre-wedding-locations-india", title: "Choosing a pre-wedding location in India", published_at: "2026-11-02", category: "Pre-wedding", cover_url: img.couple2, excerpt: "From Rajasthan palaces to Kerala backwaters.", content: "From Rajasthan palaces to Kerala backwaters. Discover the ideal heritage properties and natural light settings for your pre-wedding story." },
+  { slug: "fine-art-albums", title: "Why fine-art albums matter", published_at: "2026-10-20", category: "Albums", cover_url: img.bridal, excerpt: "The case for something you can hold.", content: "The case for something you can hold. Hand-crafted archival paper and leather bindings built to last generations." },
+  { slug: "newborn-safety", title: "Newborn safety on set", published_at: "2026-10-10", category: "Baby", cover_url: img.baby, excerpt: "How our team keeps newborns safe and calm.", content: "How our team keeps newborns safe and calm. Controlled environments, sanitized props, and gentle pacing." },
+  { slug: "kamal-colour-grade", title: "The Kamal Studios colour grade", published_at: "2026-09-28", category: "Craft", cover_url: img.studio, excerpt: "A quiet, cinematic look built over six decades.", content: "A quiet, cinematic look built over six decades. Tonal perfection that resists trends." },
+  { slug: "drone-permissions-india-2026", title: "Drone permissions in India — 2026 guide", published_at: "2026-09-12", category: "Drone", cover_url: img.drone, excerpt: "Everything you need to know before your shoot.", content: "Everything you need to know before your shoot. Clear regulations, flying permits, and venue clearance." },
+];
+
 function Post() {
   const { slug } = Route.useParams();
   const [post, setPost] = useState<Post | null | undefined>(undefined);
@@ -57,6 +67,7 @@ function Post() {
       return;
     }
 
+    // 1. LocalStorage Custom Posts (Highest Priority)
     try {
       const l = localStorage.getItem("ks_custom_blog_posts");
       if (l) {
@@ -69,21 +80,46 @@ function Post() {
             setPost(null);
             return;
           }
-          setPost(found);
+          setPost({
+            ...found,
+            content: found.content || found.excerpt || "Full article details coming soon.",
+          });
           return;
         }
       }
     } catch {}
 
+    // 2. Fallback Default Articles
+    const fb = fallbackArticles.find(
+      (f) => norm(f.slug) === reqSlug || norm(f.title) === reqSlug
+    );
+    if (fb && !deletedKeys.has(fb.slug)) {
+      setPost({
+        id: fb.slug,
+        slug: fb.slug,
+        title: fb.title,
+        excerpt: fb.excerpt,
+        cover_url: fb.cover_url,
+        content: fb.content,
+        category: fb.category,
+        author: "Kamal Studios",
+        published_at: fb.published_at,
+      });
+      return;
+    }
+
+    // 3. Supabase DB
     supabase
       .from("blog_posts")
       .select("*")
-      .eq("slug", slug)
       .eq("published", true)
-      .maybeSingle()
       .then(({ data }) => {
-        if (data && !deletedKeys.has(data.id) && !deletedKeys.has(data.slug)) {
-          setPost(data as Post);
+        const dbPosts = (data as unknown as Post[]) ?? [];
+        const found = dbPosts.find(
+          (p) => norm(p.slug) === reqSlug || norm(p.title) === reqSlug || p.id === slug || p.slug === slug
+        );
+        if (found && !deletedKeys.has(found.id) && !deletedKeys.has(found.slug)) {
+          setPost(found);
         } else {
           setPost(null);
         }
@@ -114,7 +150,7 @@ function Post() {
         {post.excerpt && <p className="mt-8 text-lg text-muted-foreground italic leading-relaxed">{post.excerpt}</p>}
 
         <div className="mt-8 prose prose-invert max-w-none whitespace-pre-wrap text-base leading-relaxed">
-          {post.content}
+          {post.content || post.excerpt}
         </div>
 
         {post.tags && (
