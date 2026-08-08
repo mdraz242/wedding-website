@@ -75,7 +75,7 @@ function Blog() {
               <div className="text-xs text-muted-foreground uppercase tracking-[0.22em]">{p.category} · {p.published_at ? new Date(p.published_at).toLocaleDateString() : ""}</div>
               <div className="mt-2 font-display text-2xl group-hover:text-[color:var(--gold)] transition-colors">{p.title}</div>
               <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{p.excerpt}</p>
-              <div className="mt-4 inline-flex items-center gap-1 text-xs uppercase tracking-[0.22em] text-[color:var(--gold)] font-medium">Read Article <ArrowUpRight className="size-3.5" /></div>
+              <div className="mt-4 inline-flex items-center gap-1 text-xs uppercase tracking-[0.22em] text-[color:var(--gold)] font-medium">Read Article</div>
             </div>
           </Link>
         ))}

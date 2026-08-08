@@ -82,7 +82,7 @@ function About() {
         <div className="container-lux">
           <h2 className="font-display text-4xl md:text-6xl">Let's create your archive.</h2>
           <Link to="/contact" className="mt-8 inline-flex items-center gap-2 bg-foreground text-background px-8 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors">
-            Begin the conversation <ArrowRight className="size-4" />
+            Begin the conversation
           </Link>
           <div className="mt-4 text-sm text-muted-foreground">or call <a href={`tel:${settings.phoneRaw}`} className="underline hover-gold">{settings.phone}</a></div>
         </div>

@@ -69,12 +69,11 @@ function LocationsIndex() {
                         {loc.tagline}
                       </p>
                     </div>
-                    <ArrowUpRight className="size-5 text-[color:var(--gold)] shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
 
                   <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
                     <span>{loc.popularVenues?.length || 0} Featured Venues</span>
-                    <span className="text-[color:var(--gold)] font-medium group-hover:underline">Explore Page →</span>
+                    <span className="text-[color:var(--gold)] font-medium group-hover:underline">Explore Page</span>
                   </div>
                 </div>
               </Link>

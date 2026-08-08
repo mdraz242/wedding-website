@@ -62,7 +62,7 @@ function ServicePage() {
           <p className="mt-4 text-white/80 max-w-2xl">{s.short}</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/contact" className="inline-flex items-center gap-2 bg-[color:var(--gold)] text-black px-6 py-3.5 text-xs uppercase tracking-[0.24em] font-medium hover:bg-white transition-colors">
-              Book consultation <ArrowRight className="size-4" />
+              Book consultation
             </Link>
             <a href={whatsappUrl} className="inline-flex items-center gap-2 border border-white/30 px-6 py-3.5 text-xs uppercase tracking-[0.24em] hover:bg-white hover:text-black transition-colors">
               <MessageCircle className="size-4" /> WhatsApp
@@ -179,7 +179,6 @@ function ServicePage() {
                       <div className="font-display text-xl">{r.title}</div>
                       <div className="text-sm text-muted-foreground">{r.short}</div>
                     </div>
-                    <ArrowUpRight className="size-4 text-[color:var(--gold)]" />
                   </div>
                 </Link>
               ))}

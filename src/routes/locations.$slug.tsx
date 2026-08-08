@@ -79,7 +79,7 @@ function LocationPage() {
               to="/contact"
               className="inline-flex items-center gap-2 bg-[color:var(--gold)] text-black px-7 py-4 text-xs uppercase tracking-[0.24em] font-medium hover:bg-white transition-colors"
             >
-              Enquire for {loc.name} <ArrowRight className="size-4" />
+              Enquire for {loc.name}
             </Link>
             <a
               href={whatsappUrl}
@@ -171,7 +171,7 @@ function LocationPage() {
                   to="/contact"
                   className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-3.5 text-xs uppercase tracking-[0.2em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
                 >
-                  Request Custom Quote <ArrowRight className="size-4" />
+                  Request Custom Quote
                 </Link>
               </div>
             </div>
@@ -200,7 +200,7 @@ function LocationPage() {
                 <h2 className="mt-3 font-display text-3xl md:text-5xl">Visual Frames from {loc.name}</h2>
               </div>
               <Link to="/portfolio" className="text-xs uppercase tracking-[0.2em] text-[color:var(--gold)] hover:underline flex items-center gap-2">
-                Explore Full Portfolio <ArrowRight className="size-4" />
+                Explore Full Portfolio
               </Link>
             </div>
 

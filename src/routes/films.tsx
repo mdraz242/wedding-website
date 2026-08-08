@@ -64,7 +64,6 @@ function Films() {
                   <div className="text-xs text-[color:var(--gold)] uppercase tracking-[0.18em] mt-1">{f.category}</div>
                 )}
               </div>
-              <ArrowUpRight className="size-5 text-[color:var(--gold)]" />
             </div>
           </a>
         ))}

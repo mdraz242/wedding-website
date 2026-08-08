@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useMemo } from "react";
-import { ArrowRight, ArrowUpRight, Play, Star, MapPin, Phone, MessageCircle, Send, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Star, MapPin, Phone, MessageCircle, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
 import { img, gallery } from "@/lib/site";
@@ -204,7 +204,7 @@ function FeaturedServices() {
             <h2 className="mt-3 font-display text-4xl md:text-6xl leading-tight">{homeSections.featured_services.heading}</h2>
           </div>
           <Link to="/services" className="text-sm uppercase tracking-[0.22em] hover-gold flex items-center gap-2">
-            View all services <ArrowRight className="size-4" />
+            View all services
           </Link>
         </div>
 
@@ -285,7 +285,7 @@ function PortfolioPreview() {
             <h2 className="mt-3 font-display text-4xl md:text-6xl">{homeSections.portfolio_preview.heading}</h2>
           </div>
           <Link to="/portfolio" className="text-sm uppercase tracking-[0.22em] hover-gold flex items-center gap-2 font-medium">
-            View all portfolio work <ArrowRight className="size-4" />
+            View all portfolio work
           </Link>
         </div>
 
@@ -317,7 +317,7 @@ function FilmsSection() {
             <h2 className="mt-3 font-display text-4xl md:text-6xl">{homeSections.films_section.heading}</h2>
           </div>
           <a href={settings.social.youtube} target="_blank" rel="noreferrer" className="text-sm uppercase tracking-[0.22em] hover-gold flex items-center gap-2 font-medium">
-            YouTube channel <ArrowUpRight className="size-4" />
+            YouTube channel
           </a>
         </div>
 
@@ -387,7 +387,7 @@ function GoogleReviews() {
               <ChevronRight className="size-4" />
             </button>
             <a href={settings.social.google} target="_blank" rel="noreferrer" className="ml-2 inline-flex items-center gap-2 border border-border px-5 py-3 text-xs uppercase tracking-[0.22em] hover:bg-foreground hover:text-background transition-colors font-medium">
-              Read all <ArrowUpRight className="size-4" />
+              Read all
             </a>
           </div>
         </div>
@@ -465,7 +465,7 @@ function ServiceAreas() {
               to="/locations"
               className="text-xs uppercase tracking-[0.22em] text-[color:var(--gold)] hover:underline inline-flex items-center gap-1.5 font-medium"
             >
-              Explore all locations <ArrowRight className="size-3.5" />
+              Explore all locations
             </Link>
           </div>
         </div>
@@ -481,7 +481,6 @@ function ServiceAreas() {
                   <MapPin className="size-3.5 text-[color:var(--gold)] shrink-0 group-hover:scale-110 transition-transform" />
                   {loc.name}
                 </span>
-                <ArrowUpRight className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-[color:var(--gold)] transition-all shrink-0" />
               </Link>
             </li>
           ))}

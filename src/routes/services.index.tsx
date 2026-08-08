@@ -57,7 +57,6 @@ function ServicesIndex() {
                       <div className="font-display text-xl group-hover:text-[color:var(--gold)] transition-colors">{s.title}</div>
                       <div className="text-sm text-muted-foreground mt-0.5">{s.short}</div>
                     </div>
-                    <ArrowUpRight className="size-4 text-[color:var(--gold)] mt-1 shrink-0" />
                   </div>
                 </Link>
               ))}
