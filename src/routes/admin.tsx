@@ -1244,14 +1244,19 @@ function PortfolioPanel() {
 
   const handleSaveCatImages = async () => {
     setSavingCat(true);
-    const r = await saveCatImages({ data: { images: localCatImages } });
-    setSavingCat(false);
-    if (!r.ok) {
-      alert("Failed to save category images: " + ("error" in r ? r.error : "Unknown error"));
-      return;
+    try {
+      const r = await saveCatImages({ data: { images: localCatImages } });
+      if (!r.ok) {
+        alert("Failed to save category images: " + ("error" in r ? r.error : "Unknown error"));
+        return;
+      }
+      await refresh();
+      alert("Category images saved successfully!");
+    } catch (err: any) {
+      alert("Error saving category images: " + (err?.message || "Unknown error"));
+    } finally {
+      setSavingCat(false);
     }
-    await refresh();
-    alert("Category images saved successfully!");
   };
 
   const categoriesList: CategoryKey[] = [
@@ -2886,26 +2891,36 @@ function NavigationPanel() {
   const handleResetDefaults = async () => {
     if (!confirm("Reset navigation menu to default items?")) return;
     setSaving(true);
-    const r = await updateNav({ data: { navigation: defaultNavigationItems } });
-    setSaving(false);
-    if (!r.ok) {
-      alert("Failed to reset navigation menu.");
-      return;
+    try {
+      const r = await updateNav({ data: { navigation: defaultNavigationItems } });
+      if (!r.ok) {
+        alert("Failed to reset navigation menu: " + ("error" in r ? r.error : "Unknown error"));
+        return;
+      }
+      await refresh();
+      alert("Navigation menu reset to defaults!");
+    } catch (err: any) {
+      alert("Error resetting navigation menu: " + (err?.message || "Unknown error"));
+    } finally {
+      setSaving(false);
     }
-    await refresh();
-    alert("Navigation menu reset to defaults!");
   };
 
   const handleSave = async () => {
     setSaving(true);
-    const r = await updateNav({ data: { navigation: items } });
-    setSaving(false);
-    if (!r.ok) {
-      alert("Failed to save navigation menu: " + ("error" in r ? r.error : "Unknown error"));
-      return;
+    try {
+      const r = await updateNav({ data: { navigation: items } });
+      if (!r.ok) {
+        alert("Failed to save navigation menu: " + ("error" in r ? r.error : "Unknown error"));
+        return;
+      }
+      await refresh();
+      alert("Navigation menu saved successfully!");
+    } catch (err: any) {
+      alert("Error saving navigation menu: " + (err?.message || "Unknown error"));
+    } finally {
+      setSaving(false);
     }
-    await refresh();
-    alert("Navigation menu saved successfully!");
   };
 
   return (
@@ -3119,26 +3134,36 @@ function FilmsPanel() {
   const handleResetDefaults = async () => {
     if (!confirm("Reset films list to default items?")) return;
     setSaving(true);
-    const r = await updateFilms({ data: { films: defaultFilmsList } });
-    setSaving(false);
-    if (!r.ok) {
-      alert("Failed to reset films.");
-      return;
+    try {
+      const r = await updateFilms({ data: { films: defaultFilmsList } });
+      if (!r.ok) {
+        alert("Failed to reset films: " + ("error" in r ? r.error : "Unknown error"));
+        return;
+      }
+      await refresh();
+      alert("Films list reset to defaults!");
+    } catch (err: any) {
+      alert("Error resetting films: " + (err?.message || "Unknown error"));
+    } finally {
+      setSaving(false);
     }
-    await refresh();
-    alert("Films list reset to defaults!");
   };
 
   const handleSave = async () => {
     setSaving(true);
-    const r = await updateFilms({ data: { films: items } });
-    setSaving(false);
-    if (!r.ok) {
-      alert("Failed to save films: " + ("error" in r ? r.error : "Unknown error"));
-      return;
+    try {
+      const r = await updateFilms({ data: { films: items } });
+      if (!r.ok) {
+        alert("Failed to save films: " + ("error" in r ? r.error : "Unknown error"));
+        return;
+      }
+      await refresh();
+      alert("Films saved successfully!");
+    } catch (err: any) {
+      alert("Error saving films: " + (err?.message || "Unknown error"));
+    } finally {
+      setSaving(false);
     }
-    await refresh();
-    alert("Films saved successfully!");
   };
 
   return (

@@ -17,7 +17,7 @@ const sessionConfig = () => ({
   password: process.env.SESSION_SECRET || "fallback-session-secret-key-must-be-at-least-32-characters-long",
   name: "ks-admin",
   maxAge: 60 * 60 * 24 * 14, // 14 days
-  cookie: { httpOnly: true, secure: true, sameSite: "lax" as const, path: "/" },
+  cookie: { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/" },
 });
 
 function sha256(s: string) {
@@ -32,11 +32,12 @@ function safeEq(a: string, b: string) {
 }
 
 async function requireUnlocked() {
-  const session = await useSession<GateSession>(sessionConfig());
-  if (!session.data.unlocked) {
-    throw new Response("Locked", { status: 401 });
+  try {
+    const session = await useSession<GateSession>(sessionConfig());
+    return !!session.data?.unlocked;
+  } catch (err) {
+    return false;
   }
-  return session;
 }
 
 /* ─────────── Mock Local Storage Fallback ─────────── */
@@ -620,17 +621,21 @@ export const getCustomHomeSections = createServerFn({ method: "GET" }).handler(a
 export const updateCustomHomeSections = createServerFn({ method: "POST" })
   .inputValidator((d: { sections: any }) => d)
   .handler(async ({ data }) => {
-    await requireUnlocked();
+    if (!(await requireUnlocked())) return { ok: false as const, error: "Admin session locked. Please re-enter your admin password." };
     if (isMockMode) {
       mockCustomHomeSections = data.sections;
       return { ok: true as const };
     }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("site_content")
-      .upsert({ key: "custom_home_sections", value: data.sections, updated_at: new Date().toISOString() }, { onConflict: "key" });
-    if (error) return { ok: false as const, error: error.message };
-    return { ok: true as const };
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error } = await supabaseAdmin
+        .from("site_content")
+        .upsert({ key: "custom_home_sections", value: data.sections, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) return { ok: false as const, error: error.message };
+      return { ok: true as const };
+    } catch (err: any) {
+      return { ok: false as const, error: err.message || "Failed to update home sections" };
+    }
   });
 
 /* ─────────── Custom Category Images ─────────── */
@@ -641,29 +646,37 @@ export const getCustomCategoryImages = createServerFn({ method: "GET" }).handler
   if (isMockMode) {
     return { images: mockCustomCategoryImages };
   }
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("site_content")
-    .select("value")
-    .eq("key", "custom_category_images")
-    .maybeSingle();
-  return { images: data?.value || null };
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("site_content")
+      .select("value")
+      .eq("key", "custom_category_images")
+      .maybeSingle();
+    return { images: data?.value || null };
+  } catch (err) {
+    return { images: null };
+  }
 });
 
 export const updateCustomCategoryImages = createServerFn({ method: "POST" })
   .inputValidator((d: { images: any }) => d)
   .handler(async ({ data }) => {
-    await requireUnlocked();
+    if (!(await requireUnlocked())) return { ok: false as const, error: "Admin session locked. Please re-enter your admin password." };
     if (isMockMode) {
       mockCustomCategoryImages = data.images;
       return { ok: true as const };
     }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("site_content")
-      .upsert({ key: "custom_category_images", value: data.images, updated_at: new Date().toISOString() }, { onConflict: "key" });
-    if (error) return { ok: false as const, error: error.message };
-    return { ok: true as const };
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error } = await supabaseAdmin
+        .from("site_content")
+        .upsert({ key: "custom_category_images", value: data.images, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) return { ok: false as const, error: error.message };
+      return { ok: true as const };
+    } catch (err: any) {
+      return { ok: false as const, error: err.message || "Failed to update category images" };
+    }
   });
 
 /* ─────────── Custom Navigation ─────────── */
@@ -674,29 +687,37 @@ export const getCustomNavigation = createServerFn({ method: "GET" }).handler(asy
   if (isMockMode) {
     return { navigation: mockCustomNavigation };
   }
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("site_content")
-    .select("value")
-    .eq("key", "custom_navigation")
-    .maybeSingle();
-  return { navigation: data?.value || null };
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("site_content")
+      .select("value")
+      .eq("key", "custom_navigation")
+      .maybeSingle();
+    return { navigation: data?.value || null };
+  } catch (err) {
+    return { navigation: null };
+  }
 });
 
 export const updateCustomNavigation = createServerFn({ method: "POST" })
   .inputValidator((d: { navigation: any }) => d)
   .handler(async ({ data }) => {
-    await requireUnlocked();
+    if (!(await requireUnlocked())) return { ok: false as const, error: "Admin session locked. Please re-enter your admin password." };
     if (isMockMode) {
       mockCustomNavigation = data.navigation;
       return { ok: true as const };
     }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("site_content")
-      .upsert({ key: "custom_navigation", value: data.navigation, updated_at: new Date().toISOString() }, { onConflict: "key" });
-    if (error) return { ok: false as const, error: error.message };
-    return { ok: true as const };
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error } = await supabaseAdmin
+        .from("site_content")
+        .upsert({ key: "custom_navigation", value: data.navigation, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) return { ok: false as const, error: error.message };
+      return { ok: true as const };
+    } catch (err: any) {
+      return { ok: false as const, error: err.message || "Failed to update navigation" };
+    }
   });
 
 /* ─────────── Custom Films ─────────── */
@@ -707,29 +728,37 @@ export const getCustomFilms = createServerFn({ method: "GET" }).handler(async ()
   if (isMockMode) {
     return { films: mockCustomFilms };
   }
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("site_content")
-    .select("value")
-    .eq("key", "custom_films")
-    .maybeSingle();
-  return { films: data?.value || null };
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("site_content")
+      .select("value")
+      .eq("key", "custom_films")
+      .maybeSingle();
+    return { films: data?.value || null };
+  } catch (err) {
+    return { films: null };
+  }
 });
 
 export const updateCustomFilms = createServerFn({ method: "POST" })
   .inputValidator((d: { films: any }) => d)
   .handler(async ({ data }) => {
-    await requireUnlocked();
+    if (!(await requireUnlocked())) return { ok: false as const, error: "Admin session locked. Please re-enter your admin password." };
     if (isMockMode) {
       mockCustomFilms = data.films;
       return { ok: true as const };
     }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("site_content")
-      .upsert({ key: "custom_films", value: data.films, updated_at: new Date().toISOString() }, { onConflict: "key" });
-    if (error) return { ok: false as const, error: error.message };
-    return { ok: true as const };
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error } = await supabaseAdmin
+        .from("site_content")
+        .upsert({ key: "custom_films", value: data.films, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) return { ok: false as const, error: error.message };
+      return { ok: true as const };
+    } catch (err: any) {
+      return { ok: false as const, error: err.message || "Failed to update films" };
+    }
   });
 
 
