@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
-import { type CategoryKey } from "@/lib/site";
+import { categoryImages, type CategoryKey } from "@/lib/site";
 import { useSiteContent } from "@/hooks/useSiteContent";
-import { getPublishedAlbums } from "@/lib/admin.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/portfolio")({
   head: () => ({
@@ -50,20 +49,30 @@ type Album = {
 function Portfolio() {
   const { getPageSEO, categoryImages } = useSiteContent();
   const page = getPageSEO("portfolio");
-  const fetchAlbums = useServerFn(getPublishedAlbums);
   const [cat, setCat] = useState<(typeof CATS)[number]>("All");
   const [albums, setAlbums] = useState<Album[]>([]);
   const [activeAlbum, setActiveAlbum] = useState<Album | null>(null);
 
   useEffect(() => {
-    fetchAlbums()
-      .then((res) => {
-        if (res?.albums) {
-          setAlbums(res.albums as Album[]);
-        }
-      })
-      .catch((err) => console.error("Error fetching portfolio albums:", err));
-  }, [fetchAlbums]);
+    supabase
+      .from("portfolio_albums")
+      .select(`
+        id,
+        slug,
+        title,
+        category,
+        cover_url,
+        description,
+        portfolio_images (
+          id,
+          url,
+          sort_order
+        )
+      `)
+      .eq("published", true)
+      .order("sort_order")
+      .then(({ data }) => setAlbums((data as unknown as Album[]) ?? []));
+  }, []);
 
   const shots = useMemo(() => {
     const cats: CategoryKey[] =
@@ -114,37 +123,7 @@ function Portfolio() {
         </div>
       </section>
 
-      {albums.length > 0 && (
-        <section className="container-lux pb-16">
-          <div className="kbd-eyebrow text-[color:var(--gold)] mb-6">Featured albums</div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {albums.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => setActiveAlbum(a)}
-                className="group block text-left w-full border border-border bg-card hover:border-[color:var(--gold)] transition-colors rounded-sm overflow-hidden"
-              >
-                <div className="aspect-[4/5] overflow-hidden bg-black w-full">
-                  {a.cover_url && (
-                    <img
-                      src={a.cover_url}
-                      alt={a.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    />
-                  )}
-                </div>
-                <div className="p-5">
-                  <div className="text-xs text-muted-foreground uppercase tracking-[0.22em]">{a.category}</div>
-                  <div className="mt-2 font-display text-2xl group-hover:text-[color:var(--gold)] transition-colors">
-                    {a.title}
-                  </div>
-                  {a.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{a.description}</p>}
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
+
 
       <div className="container-lux flex flex-wrap gap-2 pb-10">
         {CATS.map((c) => (
