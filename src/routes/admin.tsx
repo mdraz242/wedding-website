@@ -1117,13 +1117,66 @@ function EnquiriesPanel() {
 
 /* ─────────── Media Upload Hook ─────────── */
 
+function compressImageIfNeeded(file: File, maxWidth = 1600, quality = 0.8): Promise<File> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/") || file.type.includes("svg") || file.type.includes("gif")) {
+      resolve(file);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = document.createElement("img");
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth || height > maxWidth) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxWidth) / height);
+            height = maxWidth;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob && blob.size < file.size) {
+              resolve(new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" }));
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 function useMediaUpload() {
   const create = useServerFn(createMediaUploadUrl);
   const getUrl = useServerFn(getMediaSignedUrl);
-  return async (file: File): Promise<string> => {
+  return async (rawFile: File): Promise<string> => {
+    const file = await compressImageIfNeeded(rawFile);
+    if (file.size > 4 * 1024 * 1024) {
+      throw new Error("File size is too large (over 4MB). Please select a smaller file or paste an external URL.");
+    }
     const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
     const c = await create({ data: { ext } });
-    if (!c.ok) throw new Error(c.error);
+    if (!c.ok) throw new Error("error" in c ? c.error : "Upload setup failed");
     if ((c as any).isMock) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1139,7 +1192,7 @@ function useMediaUpload() {
     });
     if (!putRes.ok) throw new Error(`Upload failed: ${putRes.status}`);
     const s = await getUrl({ data: { path: c.path } });
-    if (!s.ok) throw new Error(s.error);
+    if (!s.ok) throw new Error("error" in s ? s.error : "Failed to get file URL");
     return s.url;
   };
 }
