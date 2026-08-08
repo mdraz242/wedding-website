@@ -761,6 +761,37 @@ export const updateCustomFilms = createServerFn({ method: "POST" })
     }
   });
 
+/* ─────────── Public Portfolio Albums Fetch ─────────── */
+
+export const getPublishedAlbums = createServerFn({ method: "GET" }).handler(async () => {
+  if (isMockMode) {
+    return { albums: mockAlbums };
+  }
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("portfolio_albums")
+      .select(`
+        id,
+        slug,
+        title,
+        category,
+        cover_url,
+        description,
+        portfolio_images (
+          id,
+          url,
+          sort_order
+        )
+      `)
+      .eq("published", true)
+      .order("sort_order");
+    return { albums: data || [] };
+  } catch (err) {
+    return { albums: [] };
+  }
+});
+
 
 
 

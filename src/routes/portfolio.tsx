@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
-import { categoryImages, type CategoryKey } from "@/lib/site";
+import { type CategoryKey } from "@/lib/site";
 import { useSiteContent } from "@/hooks/useSiteContent";
-import { supabase } from "@/integrations/supabase/client";
+import { getPublishedAlbums } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/portfolio")({
   head: () => ({
@@ -49,30 +50,20 @@ type Album = {
 function Portfolio() {
   const { getPageSEO, categoryImages } = useSiteContent();
   const page = getPageSEO("portfolio");
+  const fetchAlbums = useServerFn(getPublishedAlbums);
   const [cat, setCat] = useState<(typeof CATS)[number]>("All");
   const [albums, setAlbums] = useState<Album[]>([]);
   const [activeAlbum, setActiveAlbum] = useState<Album | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("portfolio_albums")
-      .select(`
-        id,
-        slug,
-        title,
-        category,
-        cover_url,
-        description,
-        portfolio_images (
-          id,
-          url,
-          sort_order
-        )
-      `)
-      .eq("published", true)
-      .order("sort_order")
-      .then(({ data }) => setAlbums((data as unknown as Album[]) ?? []));
-  }, []);
+    fetchAlbums()
+      .then((res) => {
+        if (res?.albums) {
+          setAlbums(res.albums as Album[]);
+        }
+      })
+      .catch((err) => console.error("Error fetching portfolio albums:", err));
+  }, [fetchAlbums]);
 
   const shots = useMemo(() => {
     const cats: CategoryKey[] =

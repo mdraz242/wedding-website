@@ -256,9 +256,9 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
 
   const categoryImages = useMemo(() => {
     if (!customCategoryImages) return defaultCategoryImages;
-    const merged = { ...defaultCategoryImages };
-    for (const key of Object.keys(merged) as (keyof typeof defaultCategoryImages)[]) {
-      if (Array.isArray(customCategoryImages[key]) && customCategoryImages[key].length > 0) {
+    const merged: Record<string, string[]> = { ...defaultCategoryImages };
+    for (const key of Object.keys(customCategoryImages)) {
+      if (Array.isArray(customCategoryImages[key])) {
         merged[key] = customCategoryImages[key];
       }
     }
