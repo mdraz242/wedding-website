@@ -54,8 +54,12 @@ import {
   updateCustomPagesSEO,
   getCustomHomeSections,
   updateCustomHomeSections,
+  updateCustomCategoryImages,
+  updateCustomNavigation,
+  getCustomFilms,
+  updateCustomFilms,
 } from "@/lib/admin.functions";
-import { useSiteContent, type SiteSettings } from "@/hooks/useSiteContent";
+import { useSiteContent, defaultNavigationItems, defaultFilmsList, type SiteSettings, type NavItem, type FilmItem } from "@/hooks/useSiteContent";
 import { services as defaultServices, type Service } from "@/data/services";
 import { locations as defaultLocations, type Location } from "@/data/locations";
 import { defaultPagesSEO, type PageKey, type PageSEOContent } from "@/data/pages";
@@ -74,10 +78,12 @@ type Tab =
   | "pages"
   | "enquiries"
   | "portfolio"
+  | "films_page"
   | "blog"
   | "services"
   | "locations"
   | "reviews"
+  | "navigation"
   | "content"
   | "settings";
 
@@ -194,10 +200,12 @@ function Dashboard({ onLock }: { onLock: () => void }) {
             ["pages", "Pages & SEO"],
             ["enquiries", "Enquiries"],
             ["portfolio", "Portfolio"],
+            ["films_page", "Films Page"],
             ["blog", "Blog Posting"],
             ["services", "Services"],
             ["locations", "Locations"],
             ["reviews", "Reviews"],
+            ["navigation", "Header Menu"],
             ["content", "Site Identity"],
             ["settings", "Settings"],
           ] as [Tab, string][]
@@ -222,10 +230,12 @@ function Dashboard({ onLock }: { onLock: () => void }) {
         {tab === "pages" && <PagesSEOPanel />}
         {tab === "enquiries" && <EnquiriesPanel />}
         {tab === "portfolio" && <PortfolioPanel />}
+        {tab === "films_page" && <FilmsPanel />}
         {tab === "blog" && <BlogPanel />}
         {tab === "services" && <ServicesPanel />}
         {tab === "locations" && <LocationsPanel />}
         {tab === "reviews" && <ReviewsPanel />}
+        {tab === "navigation" && <NavigationPanel />}
         {tab === "content" && <ContentPanel />}
         {tab === "settings" && <SettingsPanel />}
       </div>
@@ -286,11 +296,52 @@ function HomeSectionsPanel() {
   const [form, setForm] = useState<HomeSectionsConfig>(homeSections);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingHeroVideo, setUploadingHeroVideo] = useState(false);
+  const [newHeroVideoUrl, setNewHeroVideoUrl] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     setForm(homeSections);
   }, [homeSections]);
+
+  const handleUploadHeroVideo = async (file: File) => {
+    setUploadingHeroVideo(true);
+    try {
+      const url = await upload(file);
+      setForm((prev) => ({
+        ...prev,
+        hero: {
+          ...prev.hero,
+          videos: [...(prev.hero.videos || []), url],
+        },
+      }));
+    } catch (e) {
+      alert("Video upload failed.");
+    }
+    setUploadingHeroVideo(false);
+  };
+
+  const handleAddHeroVideoUrl = () => {
+    if (!newHeroVideoUrl.trim()) return;
+    setForm((prev) => ({
+      ...prev,
+      hero: {
+        ...prev.hero,
+        videos: [...(prev.hero.videos || []), newHeroVideoUrl.trim()],
+      },
+    }));
+    setNewHeroVideoUrl("");
+  };
+
+  const handleRemoveHeroVideo = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      hero: {
+        ...prev.hero,
+        videos: (prev.hero.videos || []).filter((_, i) => i !== index),
+      },
+    }));
+  };
 
   const handleWhyUsUpload = async (file: File) => {
     setUploading(true);
@@ -375,6 +426,64 @@ function HomeSectionsPanel() {
             value={form.hero.btn_secondary_text}
             onChange={(v) => setForm({ ...form, hero: { ...form.hero, btn_secondary_text: v } })}
           />
+
+          <div className="md:col-span-2 pt-4 border-t border-border">
+            <label className="kbd-eyebrow text-muted-foreground block mb-2">
+              Background Videos Carousel (Upload MP4 / WebM or Paste Video URLs)
+            </label>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="Paste video URL here..."
+                value={newHeroVideoUrl}
+                onChange={(e) => setNewHeroVideoUrl(e.target.value)}
+                className="flex-1 min-w-[200px] bg-transparent border-b border-border py-2 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+              />
+              <button
+                type="button"
+                onClick={handleAddHeroVideoUrl}
+                className="px-4 py-2 border border-border text-xs uppercase tracking-[0.18em] hover:border-[color:var(--gold)] transition-colors"
+              >
+                Add URL
+              </button>
+              <label className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.18em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors cursor-pointer">
+                <Upload className="size-4" /> {uploadingHeroVideo ? "Uploading…" : "Upload MP4"}
+                <input
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) handleUploadHeroVideo(e.target.files[0]);
+                  }}
+                />
+              </label>
+            </div>
+
+            {form.hero.videos && form.hero.videos.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                {form.hero.videos.map((v, idx) => (
+                  <div key={v + idx} className="relative group bg-black rounded-sm border border-border overflow-hidden">
+                    <video src={v} muted className="h-28 w-full object-cover" />
+                    <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-between p-3">
+                      <span className="text-[10px] text-white/90 truncate max-w-[140px]">{v}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveHeroVideo(idx)}
+                        className="bg-destructive text-white p-1.5 rounded-full hover:scale-110 transition-transform"
+                        title="Remove video"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">
+                Using default video carousel. Upload MP4 videos or add video URLs above to customize.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1056,17 +1165,34 @@ type AlbumImage = {
 };
 
 function PortfolioPanel() {
+  const { categoryImages, refresh } = useSiteContent();
+  const saveCatImages = useServerFn(updateCustomCategoryImages);
+  const upload = useMediaUpload();
+
+  const [mode, setMode] = useState<"categories" | "albums">("categories");
+  const [selectedCat, setSelectedCat] = useState<CategoryKey>("Wedding");
+  const [localCatImages, setLocalCatImages] = useState<Record<string, string[]>>({});
+  const [savingCat, setSavingCat] = useState(false);
+  const [uploadingCat, setUploadingCat] = useState(false);
+  const [newUrl, setNewUrl] = useState("");
+
   const list = useServerFn(listAlbums);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [editing, setEditing] = useState<Album | null>(null);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    if (categoryImages) {
+      setLocalCatImages(JSON.parse(JSON.stringify(categoryImages)));
+    }
+  }, [categoryImages]);
+
+  const loadAlbums = useCallback(async () => {
     setAlbums((await list()) as Album[]);
   }, [list]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    loadAlbums();
+  }, [loadAlbums]);
 
   if (editing)
     return (
@@ -1074,54 +1200,233 @@ function PortfolioPanel() {
         album={editing}
         onClose={() => {
           setEditing(null);
-          load();
+          loadAlbums();
         }}
       />
     );
 
-  const newAlbum = () =>
-    setEditing({
-      id: "",
-      slug: "",
-      title: "",
-      category: "Weddings",
-      cover_url: "",
-      description: "",
-      sort_order: 0,
-      published: true,
-    });
+  const currentCatList = localCatImages[selectedCat] || [];
+
+  const handleUploadCategoryImg = async (files: FileList | null) => {
+    if (!files || !files.length) return;
+    setUploadingCat(true);
+    try {
+      const urls: string[] = [];
+      for (const f of Array.from(files)) {
+        const u = await upload(f);
+        urls.push(u);
+      }
+      setLocalCatImages((prev) => ({
+        ...prev,
+        [selectedCat]: [...(prev[selectedCat] || []), ...urls],
+      }));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Upload failed");
+    }
+    setUploadingCat(false);
+  };
+
+  const handleAddUrl = () => {
+    if (!newUrl.trim()) return;
+    setLocalCatImages((prev) => ({
+      ...prev,
+      [selectedCat]: [...(prev[selectedCat] || []), newUrl.trim()],
+    }));
+    setNewUrl("");
+  };
+
+  const handleRemoveCategoryImg = (idx: number) => {
+    setLocalCatImages((prev) => ({
+      ...prev,
+      [selectedCat]: (prev[selectedCat] || []).filter((_, i) => i !== idx),
+    }));
+  };
+
+  const handleSaveCatImages = async () => {
+    setSavingCat(true);
+    const r = await saveCatImages({ data: { images: localCatImages } });
+    setSavingCat(false);
+    if (!r.ok) {
+      alert("Failed to save category images: " + ("error" in r ? r.error : "Unknown error"));
+      return;
+    }
+    await refresh();
+    alert("Category images saved successfully!");
+  };
+
+  const categoriesList: CategoryKey[] = [
+    "Wedding",
+    "Pre-Wedding",
+    "Baby",
+    "Maternity",
+    "Fashion",
+    "Commercial",
+    "Corporate",
+    "Events",
+    "Products",
+    "Real Estate",
+  ];
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div className="text-sm text-muted-foreground">{albums.length} albums</div>
+      <div className="flex border-b border-border mb-6 gap-6">
         <button
-          onClick={newAlbum}
-          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
+          onClick={() => setMode("categories")}
+          className={`pb-3 text-xs uppercase tracking-[0.22em] font-medium border-b-2 transition-colors ${
+            mode === "categories"
+              ? "border-[color:var(--gold)] text-[color:var(--gold)]"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
         >
-          <Plus className="size-4" /> New album
+          Category Gallery Images
+        </button>
+        <button
+          onClick={() => setMode("albums")}
+          className={`pb-3 text-xs uppercase tracking-[0.22em] font-medium border-b-2 transition-colors ${
+            mode === "albums"
+              ? "border-[color:var(--gold)] text-[color:var(--gold)]"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Featured Albums ({albums.length})
         </button>
       </div>
 
-      {!albums.length && <Empty label="No portfolio albums yet. Create your first." />}
+      {mode === "categories" ? (
+        <div>
+          <div className="flex flex-wrap gap-2 mb-6">
+            {categoriesList.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCat(cat)}
+                className={`px-3 py-1.5 text-xs uppercase tracking-[0.18em] border rounded-sm transition-colors ${
+                  selectedCat === cat
+                    ? "bg-foreground text-background border-foreground font-semibold"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground"
+                }`}
+              >
+                {cat} ({localCatImages[cat]?.length || 0})
+              </button>
+            ))}
+          </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {albums.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => setEditing(a)}
-            className="text-left border border-border bg-card hover:border-[color:var(--gold)] p-4 flex flex-col justify-between transition-colors group rounded-sm"
-          >
-            <div className="aspect-[4/3] bg-black overflow-hidden relative w-full mb-3">
-              {a.cover_url && <img src={a.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
+          <div className="bg-card border border-border p-6 rounded-sm mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="font-display text-xl">{selectedCat} Gallery</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Manage all photos displayed for the {selectedCat} category grid on the portfolio page.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors cursor-pointer">
+                  <Upload className="size-4" /> {uploadingCat ? "Uploading…" : "Upload Photos"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleUploadCategoryImg(e.target.files)}
+                  />
+                </label>
+
+                <button
+                  onClick={handleSaveCatImages}
+                  disabled={savingCat}
+                  className="bg-[color:var(--gold)] text-black px-5 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-white transition-colors disabled:opacity-50"
+                >
+                  {savingCat ? "Saving…" : "Save Changes"}
+                </button>
+              </div>
             </div>
-            <div>
-              <div className="font-display text-xl group-hover:text-[color:var(--gold)] transition-colors">{a.title}</div>
-              <div className="text-xs text-muted-foreground mt-1">{a.category} · /{a.slug}</div>
+
+            <div className="flex items-center gap-2 mb-6">
+              <input
+                type="text"
+                placeholder="Or paste image URL here..."
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+                className="flex-1 bg-transparent border-b border-border py-2 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+              />
+              <button
+                onClick={handleAddUrl}
+                className="px-4 py-2 border border-border text-xs uppercase tracking-[0.18em] hover:border-[color:var(--gold)] transition-colors"
+              >
+                Add URL
+              </button>
             </div>
-          </button>
-        ))}
-      </div>
+
+            {!currentCatList.length ? (
+              <Empty label={`No images in ${selectedCat} gallery yet. Upload some above.`} />
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {currentCatList.map((src, i) => (
+                  <div key={src + i} className="group relative aspect-[4/5] bg-black overflow-hidden rounded-sm border border-border">
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
+                      <button
+                        onClick={() => handleRemoveCategoryImg(i)}
+                        className="bg-destructive text-white p-2 rounded-full hover:scale-110 transition-transform"
+                        title="Delete image"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div className="text-sm text-muted-foreground">{albums.length} albums</div>
+            <button
+              onClick={() =>
+                setEditing({
+                  id: "",
+                  slug: "",
+                  title: "",
+                  category: "Wedding",
+                  cover_url: "",
+                  description: "",
+                  sort_order: 0,
+                  published: true,
+                })
+              }
+              className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-[color:var(--gold)] hover:text-black transition-colors"
+            >
+              <Plus className="size-4" /> New album
+            </button>
+          </div>
+
+          {!albums.length && <Empty label="No portfolio albums yet. Create your first." />}
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {albums.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => setEditing(a)}
+                className="text-left border border-border bg-card hover:border-[color:var(--gold)] p-4 flex flex-col justify-between transition-colors group rounded-sm"
+              >
+                <div className="aspect-[4/3] bg-black overflow-hidden relative w-full mb-3">
+                  {a.cover_url && (
+                    <img src={a.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  )}
+                </div>
+                <div>
+                  <div className="font-display text-xl group-hover:text-[color:var(--gold)] transition-colors">{a.title}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {a.category} · /{a.slug}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1231,7 +1536,7 @@ function AlbumEditor({ album, onClose }: { album: Album; onClose: () => void }) 
             onChange={(e) => setA({ ...a, category: e.target.value })}
             className="bg-transparent border-b border-border py-3 text-sm"
           >
-            {["Weddings", "Portraits", "Baby", "Family", "Fashion", "Commercial", "Corporate", "Events"].map((c) => (
+            {["Wedding", "Pre-Wedding", "Baby", "Maternity", "Fashion", "Commercial", "Corporate", "Events", "Products", "Real Estate"].map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
@@ -2513,6 +2818,458 @@ function Empty({ label }: { label: string }) {
   return (
     <div className="border border-border p-16 text-center text-sm text-muted-foreground bg-secondary/40 rounded-sm">
       {label}
+    </div>
+  );
+}
+
+function NavigationPanel() {
+  const { navItems, refresh } = useSiteContent();
+  const updateNav = useServerFn(updateCustomNavigation);
+
+  const [items, setItems] = useState<NavItem[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setItems(JSON.parse(JSON.stringify(navItems)));
+  }, [navItems]);
+
+  const handleToggle = (id: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, enabled: !item.enabled } : item))
+    );
+  };
+
+  const handleChangeLabel = (id: string, label: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, label } : item))
+    );
+  };
+
+  const handleChangeTo = (id: string, to: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, to } : item))
+    );
+  };
+
+  const handleChangeCategory = (id: string, dropdownCategory: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, dropdownCategory } : item))
+    );
+  };
+
+  const handleMove = (index: number, dir: -1 | 1) => {
+    const nextIdx = index + dir;
+    if (nextIdx < 0 || nextIdx >= items.length) return;
+    const copy = [...items];
+    const temp = copy[index];
+    copy[index] = copy[nextIdx];
+    copy[nextIdx] = temp;
+    setItems(copy);
+  };
+
+  const handleAddItem = () => {
+    const newItem: NavItem = {
+      id: `nav-${Date.now()}`,
+      label: "New Page",
+      to: "/new-page",
+      type: "link",
+      enabled: true,
+    };
+    setItems((prev) => [...prev, newItem]);
+  };
+
+  const handleRemoveItem = (id: string) => {
+    if (!confirm("Remove this menu item?")) return;
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleResetDefaults = async () => {
+    if (!confirm("Reset navigation menu to default items?")) return;
+    setSaving(true);
+    const r = await updateNav({ data: { navigation: defaultNavigationItems } });
+    setSaving(false);
+    if (!r.ok) {
+      alert("Failed to reset navigation menu.");
+      return;
+    }
+    await refresh();
+    alert("Navigation menu reset to defaults!");
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const r = await updateNav({ data: { navigation: items } });
+    setSaving(false);
+    if (!r.ok) {
+      alert("Failed to save navigation menu: " + ("error" in r ? r.error : "Unknown error"));
+      return;
+    }
+    await refresh();
+    alert("Navigation menu saved successfully!");
+  };
+
+  return (
+    <div className="bg-card border border-border p-6 rounded-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="font-display text-2xl">Header Navigation & Dropdown Menu</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Customize all pages, labels, order, and dropdown categories shown in the site header menu.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleResetDefaults}
+            disabled={saving}
+            className="border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-destructive hover:text-destructive transition-colors"
+          >
+            Reset Defaults
+          </button>
+          <button
+            onClick={handleAddItem}
+            className="border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] transition-colors"
+          >
+            + Add Menu Link
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-[color:var(--gold)] text-black px-6 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-white transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save Navigation"}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className={`flex flex-wrap items-center gap-4 p-4 border rounded-sm transition-colors ${
+              item.enabled ? "bg-background border-border" : "bg-muted/30 border-border/50 opacity-60"
+            }`}
+          >
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleMove(index, -1)}
+                disabled={index === 0}
+                className="p-1 border border-border rounded-sm hover:border-[color:var(--gold)] disabled:opacity-30 text-xs"
+                title="Move Up"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => handleMove(index, 1)}
+                disabled={index === items.length - 1}
+                className="p-1 border border-border rounded-sm hover:border-[color:var(--gold)] disabled:opacity-30 text-xs"
+                title="Move Down"
+              >
+                ▼
+              </button>
+            </div>
+
+            <div className="w-40">
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
+                Label
+              </label>
+              <input
+                type="text"
+                value={item.label}
+                onChange={(e) => handleChangeLabel(item.id, e.target.value)}
+                className="w-full bg-transparent border-b border-border py-1 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+              />
+            </div>
+
+            <div className="w-36">
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
+                Type
+              </label>
+              <select
+                value={item.type}
+                onChange={(e) =>
+                  setItems((prev) =>
+                    prev.map((i) =>
+                      i.id === item.id
+                        ? { ...i, type: e.target.value as "link" | "dropdown" }
+                        : i
+                    )
+                  )
+                }
+                className="w-full bg-transparent border-b border-border py-1 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+              >
+                <option value="link">Direct Link</option>
+                <option value="dropdown">Dropdown Menu</option>
+              </select>
+            </div>
+
+            {item.type === "link" ? (
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
+                  Target Path / URL
+                </label>
+                <input
+                  type="text"
+                  value={item.to}
+                  onChange={(e) => handleChangeTo(item.id, e.target.value)}
+                  className="w-full bg-transparent border-b border-border py-1 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+                />
+              </div>
+            ) : (
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">
+                  Dropdown Category
+                </label>
+                <select
+                  value={item.dropdownCategory || item.label}
+                  onChange={(e) => handleChangeCategory(item.id, e.target.value)}
+                  className="w-full bg-transparent border-b border-border py-1 text-sm focus:outline-none focus:border-[color:var(--gold)]"
+                >
+                  {["Photography", "Videography", "Events", "Commercial", "Wedding", "Pre-Wedding", "Baby", "Maternity", "Fashion", "Corporate"].map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 ml-auto">
+              <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={item.enabled}
+                  onChange={() => handleToggle(item.id)}
+                  className="rounded border-border accent-[color:var(--gold)]"
+                />
+                <span>{item.enabled ? "Visible" : "Hidden"}</span>
+              </label>
+
+              <button
+                onClick={() => handleRemoveItem(item.id)}
+                className="p-1.5 text-destructive hover:bg-destructive/10 rounded-sm transition-colors"
+                title="Remove item"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FilmsPanel() {
+  const { filmsList, refresh } = useSiteContent();
+  const updateFilms = useServerFn(updateCustomFilms);
+  const upload = useMediaUpload();
+
+  const [items, setItems] = useState<FilmItem[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    setItems(JSON.parse(JSON.stringify(filmsList)));
+  }, [filmsList]);
+
+  const handleChange = (id: string, field: keyof FilmItem, val: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: val } : item))
+    );
+  };
+
+  const handleUploadCover = async (file: File, index: number) => {
+    setUploadingIndex(index);
+    try {
+      const url = await upload(file);
+      setItems((prev) =>
+        prev.map((item, i) => (i === index ? { ...item, cover: url } : item))
+      );
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Upload failed");
+    }
+    setUploadingIndex(null);
+  };
+
+  const handleMove = (index: number, dir: -1 | 1) => {
+    const nextIdx = index + dir;
+    if (nextIdx < 0 || nextIdx >= items.length) return;
+    const copy = [...items];
+    const temp = copy[index];
+    copy[index] = copy[nextIdx];
+    copy[nextIdx] = temp;
+    setItems(copy);
+  };
+
+  const handleAddFilm = () => {
+    const newFilm: FilmItem = {
+      id: `film-${Date.now()}`,
+      title: "New Film Title",
+      cover: items[0]?.cover || "",
+      video_url: "",
+      category: "Wedding",
+    };
+    setItems((prev) => [newFilm, ...prev]);
+  };
+
+  const handleRemoveFilm = (id: string) => {
+    if (!confirm("Delete this film item?")) return;
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleResetDefaults = async () => {
+    if (!confirm("Reset films list to default items?")) return;
+    setSaving(true);
+    const r = await updateFilms({ data: { films: defaultFilmsList } });
+    setSaving(false);
+    if (!r.ok) {
+      alert("Failed to reset films.");
+      return;
+    }
+    await refresh();
+    alert("Films list reset to defaults!");
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const r = await updateFilms({ data: { films: items } });
+    setSaving(false);
+    if (!r.ok) {
+      alert("Failed to save films: " + ("error" in r ? r.error : "Unknown error"));
+      return;
+    }
+    await refresh();
+    alert("Films saved successfully!");
+  };
+
+  return (
+    <div className="bg-card border border-border p-6 rounded-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="font-display text-2xl">Films Page Management</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Manage all cinematic films, video URLs, categories, and cover images displayed on the Films page.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleResetDefaults}
+            disabled={saving}
+            className="border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-destructive hover:text-destructive transition-colors"
+          >
+            Reset Defaults
+          </button>
+          <button
+            onClick={handleAddFilm}
+            className="border border-border px-4 py-2 text-xs uppercase tracking-[0.22em] hover:border-[color:var(--gold)] transition-colors"
+          >
+            + Add New Film
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-[color:var(--gold)] text-black px-6 py-2 text-xs uppercase tracking-[0.22em] font-medium hover:bg-white transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save Films"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {items.map((item, index) => (
+          <div key={item.id} className="border border-border bg-background p-4 rounded-sm flex flex-col justify-between">
+            <div>
+              <div className="relative aspect-video bg-black rounded-sm overflow-hidden mb-4 border border-border">
+                {item.cover && <img src={item.cover} alt="" className="w-full h-full object-cover" />}
+                <label className="absolute bottom-2 right-2 bg-black/80 text-white px-3 py-1.5 text-[10px] uppercase tracking-wider rounded cursor-pointer hover:bg-[color:var(--gold)] hover:text-black transition-colors">
+                  {uploadingIndex === index ? "Uploading…" : "Change Cover"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) handleUploadCover(e.target.files[0], index);
+                    }}
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Film Title</label>
+                  <input
+                    type="text"
+                    value={item.title}
+                    onChange={(e) => handleChange(item.id, "title", e.target.value)}
+                    className="w-full bg-transparent border-b border-border py-1.5 text-sm focus:outline-none focus:border-[color:var(--gold)] font-display text-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Video Link (YouTube / Vimeo / Direct URL)</label>
+                  <input
+                    type="text"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    value={item.video_url || ""}
+                    onChange={(e) => handleChange(item.id, "video_url", e.target.value)}
+                    className="w-full bg-transparent border-b border-border py-1.5 text-xs focus:outline-none focus:border-[color:var(--gold)]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Category</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Wedding, Commercial"
+                      value={item.category || ""}
+                      onChange={(e) => handleChange(item.id, "category", e.target.value)}
+                      className="w-full bg-transparent border-b border-border py-1.5 text-xs focus:outline-none focus:border-[color:var(--gold)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Cover Image URL</label>
+                    <input
+                      type="text"
+                      value={item.cover}
+                      onChange={(e) => handleChange(item.id, "cover", e.target.value)}
+                      className="w-full bg-transparent border-b border-border py-1.5 text-xs focus:outline-none focus:border-[color:var(--gold)]"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-6 pt-3 border-t border-border">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleMove(index, -1)}
+                  disabled={index === 0}
+                  className="px-2 py-1 border border-border text-xs rounded hover:border-[color:var(--gold)] disabled:opacity-30"
+                  title="Move Up"
+                >
+                  ▲ Up
+                </button>
+                <button
+                  onClick={() => handleMove(index, 1)}
+                  disabled={index === items.length - 1}
+                  className="px-2 py-1 border border-border text-xs rounded hover:border-[color:var(--gold)] disabled:opacity-30"
+                  title="Move Down"
+                >
+                  ▼ Down
+                </button>
+              </div>
+
+              <button
+                onClick={() => handleRemoveFilm(item.id)}
+                className="text-xs text-destructive hover:underline"
+              >
+                Delete Film
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

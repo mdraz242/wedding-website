@@ -25,7 +25,7 @@ const defaultFilms = [
 ];
 
 function Films() {
-  const { settings, getPageSEO } = useSiteContent();
+  const { settings, getPageSEO, filmsList } = useSiteContent();
   const page = getPageSEO("films");
 
   return (
@@ -42,13 +42,13 @@ function Films() {
       </section>
 
       <section className="container-lux pb-24 grid gap-6 md:grid-cols-2">
-        {defaultFilms.map((f) => (
+        {filmsList.map((f) => (
           <a
-            key={f.title}
-            href={settings.social.youtube}
+            key={f.id || f.title}
+            href={f.video_url?.trim() || settings.social.youtube}
             target="_blank"
             rel="noreferrer"
-            className="group relative aspect-video overflow-hidden bg-black block rounded-sm"
+            className="group relative aspect-video overflow-hidden bg-black block rounded-sm border border-border"
           >
             <img src={f.cover} alt={f.title} className="h-full w-full object-cover opacity-75 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
@@ -58,7 +58,12 @@ function Films() {
               </div>
             </div>
             <div className="absolute bottom-6 left-6 right-6 text-white flex items-end justify-between">
-              <div className="font-display text-2xl">{f.title}</div>
+              <div>
+                <div className="font-display text-2xl">{f.title}</div>
+                {f.category && (
+                  <div className="text-xs text-[color:var(--gold)] uppercase tracking-[0.18em] mt-1">{f.category}</div>
+                )}
+              </div>
               <ArrowUpRight className="size-5 text-[color:var(--gold)]" />
             </div>
           </a>

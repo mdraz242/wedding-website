@@ -17,6 +17,7 @@ export interface HomeSectionsConfig {
     subtitle: string;
     btn_primary_text: string;
     btn_secondary_text: string;
+    videos?: string[];
   };
   featured_services: {
     eyebrow: string;

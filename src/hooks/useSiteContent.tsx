@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { site as defaultSite } from "@/lib/site";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import { site as defaultSite, categoryImages as defaultCategoryImages, img as defaultSiteImages } from "@/lib/site";
 import brandLogo from "@/assets/logo.png";
 import {
   getSiteSettings,
@@ -8,9 +8,52 @@ import {
   getCustomReviews,
   getCustomPagesSEO,
   getCustomHomeSections,
+  getCustomCategoryImages,
+  getCustomNavigation,
+  getCustomFilms,
 } from "@/lib/admin.functions";
 import { defaultPagesSEO, type PageKey, type PageSEOContent } from "@/data/pages";
 import { defaultHomeSections, type HomeSectionsConfig } from "@/data/homeSections";
+
+export interface FilmItem {
+  id: string;
+  title: string;
+  cover: string;
+  video_url?: string;
+  category?: string;
+}
+
+export const defaultFilmsList: FilmItem[] = [
+  { id: "film-1", title: "A Palace Wedding · Udaipur", cover: defaultSiteImages.destination, video_url: "", category: "Wedding" },
+  { id: "film-2", title: "The Kaur & Singh Wedding", cover: defaultSiteImages.couple3, video_url: "", category: "Wedding" },
+  { id: "film-3", title: "Aarav + Meera · Highlight", cover: defaultSiteImages.couple2, video_url: "", category: "Wedding" },
+  { id: "film-4", title: "Campaign Film · Sona Jewels", cover: defaultSiteImages.fashion, video_url: "", category: "Commercial" },
+  { id: "film-5", title: "Baby Aanya's First Year", cover: defaultSiteImages.baby, video_url: "", category: "Baby" },
+  { id: "film-6", title: "Corporate Anthem · Vayu Group", cover: defaultSiteImages.corporate, video_url: "", category: "Corporate" },
+];
+
+export interface NavItem {
+  id: string;
+  label: string;
+  to: string;
+  type: "link" | "dropdown";
+  dropdownCategory?: string;
+  enabled: boolean;
+}
+
+export const defaultNavigationItems: NavItem[] = [
+  { id: "nav-1", label: "Home", to: "/", type: "link", enabled: true },
+  { id: "nav-2", label: "About", to: "/about", type: "link", enabled: true },
+  { id: "nav-3", label: "Photography", to: "#", type: "dropdown", dropdownCategory: "Photography", enabled: true },
+  { id: "nav-4", label: "Videography", to: "#", type: "dropdown", dropdownCategory: "Videography", enabled: true },
+  { id: "nav-5", label: "Events", to: "#", type: "dropdown", dropdownCategory: "Events", enabled: true },
+  { id: "nav-6", label: "Commercial", to: "#", type: "dropdown", dropdownCategory: "Commercial", enabled: true },
+  { id: "nav-7", label: "Portfolio", to: "/portfolio", type: "link", enabled: true },
+  { id: "nav-8", label: "Films", to: "/films", type: "link", enabled: true },
+  { id: "nav-9", label: "Reviews", to: "/reviews", type: "link", enabled: true },
+  { id: "nav-10", label: "Blog", to: "/blog", type: "link", enabled: true },
+  { id: "nav-11", label: "Contact", to: "/contact", type: "link", enabled: true },
+];
 
 export interface SiteSettings {
   name: string;
@@ -82,6 +125,12 @@ interface SiteContentContextType {
   customLocations: any[] | null;
   customReviews: any[] | null;
   customPagesSEO: Record<string, PageSEOContent> | null;
+  customCategoryImages: Record<string, string[]> | null;
+  categoryImages: typeof defaultCategoryImages;
+  customNavigation: NavItem[] | null;
+  navItems: NavItem[];
+  customFilms: FilmItem[] | null;
+  filmsList: FilmItem[];
   homeSections: HomeSectionsConfig;
   getPageSEO: (key: PageKey) => PageSEOContent;
   refresh: () => Promise<void>;
@@ -94,6 +143,12 @@ const SiteContentContext = createContext<SiteContentContextType>({
   customLocations: null,
   customReviews: null,
   customPagesSEO: null,
+  customCategoryImages: null,
+  categoryImages: defaultCategoryImages,
+  customNavigation: null,
+  navItems: defaultNavigationItems,
+  customFilms: null,
+  filmsList: defaultFilmsList,
   homeSections: defaultHomeSections,
   getPageSEO: (key: PageKey) => defaultPagesSEO[key],
   refresh: async () => {},
@@ -106,6 +161,9 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
   const [customLocations, setCustomLocations] = useState<any[] | null>(null);
   const [customReviews, setCustomReviews] = useState<any[] | null>(null);
   const [customPagesSEO, setCustomPagesSEO] = useState<Record<string, PageSEOContent> | null>(null);
+  const [customCategoryImages, setCustomCategoryImages] = useState<Record<string, string[]> | null>(null);
+  const [customNavigation, setCustomNavigation] = useState<NavItem[] | null>(null);
+  const [customFilms, setCustomFilms] = useState<FilmItem[] | null>(null);
   const [homeSections, setHomeSections] = useState<HomeSectionsConfig>(defaultHomeSections);
   const [loading, setLoading] = useState(true);
 
@@ -116,13 +174,16 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
     }
 
     try {
-      const [sRes, svcRes, locRes, revRes, pagesRes, homeRes] = await Promise.all([
+      const [sRes, svcRes, locRes, revRes, pagesRes, homeRes, catImgRes, navRes, filmRes] = await Promise.all([
         getSiteSettings(),
         getCustomServices(),
         getCustomLocations(),
         getCustomReviews(),
         getCustomPagesSEO(),
         getCustomHomeSections(),
+        getCustomCategoryImages(),
+        getCustomNavigation(),
+        getCustomFilms(),
       ]);
 
       if (sRes?.settings) {
@@ -150,6 +211,9 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
       if (locRes?.locations) setCustomLocations(locRes.locations);
       if (revRes?.reviews) setCustomReviews(revRes.reviews);
       if (pagesRes?.pages) setCustomPagesSEO(pagesRes.pages);
+      if (catImgRes?.images) setCustomCategoryImages(catImgRes.images);
+      if (navRes?.navigation) setCustomNavigation(navRes.navigation);
+      if (filmRes?.films) setCustomFilms(filmRes.films);
       if (homeRes?.sections) {
         setHomeSections({
           ...defaultHomeSections,
@@ -190,6 +254,31 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
     [customPagesSEO],
   );
 
+  const categoryImages = useMemo(() => {
+    if (!customCategoryImages) return defaultCategoryImages;
+    const merged = { ...defaultCategoryImages };
+    for (const key of Object.keys(merged) as (keyof typeof defaultCategoryImages)[]) {
+      if (Array.isArray(customCategoryImages[key]) && customCategoryImages[key].length > 0) {
+        merged[key] = customCategoryImages[key];
+      }
+    }
+    return merged;
+  }, [customCategoryImages]);
+
+  const navItems = useMemo(() => {
+    if (customNavigation && Array.isArray(customNavigation) && customNavigation.length > 0) {
+      return customNavigation;
+    }
+    return defaultNavigationItems;
+  }, [customNavigation]);
+
+  const filmsList = useMemo(() => {
+    if (customFilms && Array.isArray(customFilms) && customFilms.length > 0) {
+      return customFilms;
+    }
+    return defaultFilmsList;
+  }, [customFilms]);
+
   return (
     <SiteContentContext.Provider
       value={{
@@ -198,6 +287,12 @@ export function SiteContentProvider({ children }: { children: React.ReactNode })
         customLocations,
         customReviews,
         customPagesSEO,
+        customCategoryImages,
+        categoryImages,
+        customNavigation,
+        navItems,
+        customFilms,
+        filmsList,
         homeSections,
         getPageSEO,
         refresh: fetchSettings,

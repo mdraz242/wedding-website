@@ -633,6 +633,108 @@ export const updateCustomHomeSections = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/* ─────────── Custom Category Images ─────────── */
+
+let mockCustomCategoryImages: any = null;
+
+export const getCustomCategoryImages = createServerFn({ method: "GET" }).handler(async () => {
+  if (isMockMode) {
+    return { images: mockCustomCategoryImages };
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("site_content")
+    .select("value")
+    .eq("key", "custom_category_images")
+    .maybeSingle();
+  return { images: data?.value || null };
+});
+
+export const updateCustomCategoryImages = createServerFn({ method: "POST" })
+  .inputValidator((d: { images: any }) => d)
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    if (isMockMode) {
+      mockCustomCategoryImages = data.images;
+      return { ok: true as const };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("site_content")
+      .upsert({ key: "custom_category_images", value: data.images, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const };
+  });
+
+/* ─────────── Custom Navigation ─────────── */
+
+let mockCustomNavigation: any = null;
+
+export const getCustomNavigation = createServerFn({ method: "GET" }).handler(async () => {
+  if (isMockMode) {
+    return { navigation: mockCustomNavigation };
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("site_content")
+    .select("value")
+    .eq("key", "custom_navigation")
+    .maybeSingle();
+  return { navigation: data?.value || null };
+});
+
+export const updateCustomNavigation = createServerFn({ method: "POST" })
+  .inputValidator((d: { navigation: any }) => d)
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    if (isMockMode) {
+      mockCustomNavigation = data.navigation;
+      return { ok: true as const };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("site_content")
+      .upsert({ key: "custom_navigation", value: data.navigation, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const };
+  });
+
+/* ─────────── Custom Films ─────────── */
+
+let mockCustomFilms: any = null;
+
+export const getCustomFilms = createServerFn({ method: "GET" }).handler(async () => {
+  if (isMockMode) {
+    return { films: mockCustomFilms };
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("site_content")
+    .select("value")
+    .eq("key", "custom_films")
+    .maybeSingle();
+  return { films: data?.value || null };
+});
+
+export const updateCustomFilms = createServerFn({ method: "POST" })
+  .inputValidator((d: { films: any }) => d)
+  .handler(async ({ data }) => {
+    await requireUnlocked();
+    if (isMockMode) {
+      mockCustomFilms = data.films;
+      return { ok: true as const };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("site_content")
+      .upsert({ key: "custom_films", value: data.films, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const };
+  });
+
+
+
+
 
 
 

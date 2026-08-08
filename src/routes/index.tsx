@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { ArrowRight, ArrowUpRight, Play, Star, MapPin, Phone, MessageCircle, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { SiteNav } from "@/components/site/nav";
 import { SiteFooter } from "@/components/site/footer";
@@ -98,7 +98,15 @@ function LogoReveal() {
 function Hero() {
   const { settings, homeSections } = useSiteContent();
   const [active, setActive] = useState(0);
-  const videos = [heroVideoLocal, heroVideoNew.url, heroVideoMain.url, heroVideo1.url, heroVideo2.url];
+  const defaultVideos = useMemo(
+    () => [heroVideoLocal, heroVideoNew.url, heroVideoMain.url, heroVideo1.url, heroVideo2.url],
+    [],
+  );
+  const videos =
+    homeSections.hero.videos && homeSections.hero.videos.length > 0
+      ? homeSections.hero.videos
+      : defaultVideos;
+
   useEffect(() => {
     const id = setInterval(() => setActive((a) => (a + 1) % videos.length), 8000);
     return () => clearInterval(id);
@@ -122,7 +130,7 @@ function Hero() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/20 to-black/85" />
       </div>
 
-      <div className="relative z-10 h-full container-lux flex flex-col items-center justify-end pb-[18vh] text-center text-white">
+      <div className="relative z-10 h-full container-lux flex flex-col items-center justify-center text-center text-white">
         <div className="max-w-xl">
           <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.75rem)] leading-[1.15] tracking-tight reveal">
             {homeSections.hero.title_part1 || settings.hero.title_part1}
@@ -137,7 +145,7 @@ function Hero() {
               to="/contact"
               className="group inline-flex items-center gap-3 bg-[color:var(--gold)] text-black px-7 py-3.5 text-[11px] uppercase tracking-[0.28em] font-medium hover:bg-white transition-colors"
             >
-              {homeSections.hero.btn_primary_text || "Book Now"} <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+              {homeSections.hero.btn_primary_text || "Book Now"}
             </Link>
             <Link
               to="/portfolio"
@@ -149,16 +157,6 @@ function Hero() {
         </div>
       </div>
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
-        {videos.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setActive(i)}
-            aria-label={`Show clip ${i + 1}`}
-            className={`h-0.5 transition-all ${active === i ? "w-10 bg-[color:var(--gold)]" : "w-6 bg-white/30 hover:bg-white/60"}`}
-          />
-        ))}
-      </div>
     </section>
   );
 }
@@ -230,8 +228,8 @@ function FeaturedServices() {
                 <div className="text-[10px] tracking-[0.28em] uppercase text-[color:var(--gold)]">{s.category}</div>
                 <div className="mt-1 font-display text-2xl">{s.title}</div>
                 <div className="text-white/70 text-sm mt-1 line-clamp-2">{s.short}</div>
-                <div className="mt-4 inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em]">
-                  Explore <ArrowUpRight className="size-4 text-[color:var(--gold)]" />
+                <div className="mt-4 inline-flex items-center justify-center bg-[color:var(--gold)] text-black px-4 py-2.5 text-[10px] uppercase tracking-[0.22em] font-medium group-hover:bg-white transition-colors">
+                  Explore
                 </div>
               </div>
             </Link>
@@ -308,7 +306,8 @@ function PortfolioPreview() {
 
 /* ---------- Films ---------- */
 function FilmsSection() {
-  const { settings, homeSections } = useSiteContent();
+  const { settings, homeSections, filmsList } = useSiteContent();
+  const featured = filmsList.slice(0, 3);
   return (
     <section className="py-28 md:py-36">
       <div className="container-lux">
@@ -323,19 +322,23 @@ function FilmsSection() {
         </div>
 
         <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {[img.couple3, img.destination, img.music].map((src, i) => (
+          {featured.map((f, i) => (
             <a
-              key={src}
-              href={settings.social.youtube}
+              key={f.id || i}
+              href={f.video_url?.trim() || settings.social.youtube}
               target="_blank"
               rel="noreferrer"
-              className="group relative block aspect-video overflow-hidden bg-black reveal rounded-sm"
+              className="group relative block aspect-video overflow-hidden bg-black reveal rounded-sm border border-border"
             >
-              <img src={src} alt={`Featured film ${i + 1}`} className="h-full w-full object-cover opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
+              <img src={f.cover} alt={f.title} className="h-full w-full object-cover opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="size-16 rounded-full bg-[color:var(--gold)]/90 text-black flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Play className="size-6 ml-1 fill-current" />
                 </div>
+              </div>
+              <div className="absolute bottom-4 left-4 right-4 text-white">
+                <div className="font-display text-lg truncate">{f.title}</div>
               </div>
             </a>
           ))}

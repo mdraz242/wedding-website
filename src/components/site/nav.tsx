@@ -9,7 +9,7 @@ const SERVICE_CATS: ServiceCategory[] = ["Photography", "Videography", "Events",
 const DARK_HERO_ROUTES = new Set<string>(["/"]);
 
 export function SiteNav() {
-  const { settings } = useSiteContent();
+  const { settings, navItems } = useSiteContent();
   const [scrolled, setScrolled] = useState(false);
   const [openCat, setOpenCat] = useState<ServiceCategory | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -44,6 +44,8 @@ export function SiteNav() {
     closeTimer.current = setTimeout(() => setOpenCat(null), 120);
   };
 
+  const enabledItems = navItems.filter((item) => item.enabled);
+
   return (
     <>
       <header
@@ -54,52 +56,48 @@ export function SiteNav() {
         }`}
         onMouseLeave={leave}
       >
-        <div className="container-lux flex h-20 items-center justify-between">
+        <div className="container-lux flex h-24 sm:h-20 items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <BrandMark />
-            <div className="hidden sm:block leading-none">
-              <div className="font-display text-xl tracking-wide">{settings.name}</div>
-              <div className="kbd-eyebrow text-[9px] opacity-70 mt-1">Since {settings.since}</div>
-            </div>
+            <BrandMark className="h-20 sm:h-[110px]" />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-6 text-[12px] font-medium tracking-wide">
-            <NavLink to="/" label="Home" />
-            <NavLink to="/about" label="About" />
-            {SERVICE_CATS.map((cat) => (
-              <div key={cat} className="relative" onMouseEnter={() => hover(cat)}>
-                <button
-                  className={`flex items-center gap-1 py-2 transition-colors ${openCat === cat ? "text-[color:var(--gold)]" : "hover:text-[color:var(--gold)]"}`}
-                >
-                  {cat}
-                  <span className="text-[9px]">▾</span>
-                </button>
-                <div
-                  className={`absolute left-1/2 -translate-x-1/2 top-full pt-2 transition-opacity duration-200 ${
-                    openCat === cat ? "opacity-100" : "opacity-0 pointer-events-none"
-                  }`}
-                >
-                  <div className="bg-[color:var(--ink)] text-white shadow-2xl min-w-[220px] py-2">
-                    {(g[cat] ?? []).slice(0, 8).map((s) => (
-                      <Link
-                        key={s.slug}
-                        to="/services/$slug"
-                        params={{ slug: s.slug }}
-                        onClick={() => setOpenCat(null)}
-                        className="block px-5 py-2 text-[12px] text-white/80 hover:text-[color:var(--gold)] hover:bg-white/5 transition-colors"
-                      >
-                        {s.title}
-                      </Link>
-                    ))}
+          <nav className="hidden lg:flex items-center gap-3 xl:gap-6 text-[11px] xl:text-[12px] font-medium tracking-wide">
+            {enabledItems.map((item) => {
+              if (item.type === "dropdown") {
+                const cat = (item.dropdownCategory || item.label) as ServiceCategory;
+                return (
+                  <div key={item.id} className="relative" onMouseEnter={() => hover(cat)}>
+                    <button
+                      className={`flex items-center gap-1 py-2 transition-colors ${openCat === cat ? "text-[color:var(--gold)]" : "hover:text-[color:var(--gold)]"}`}
+                    >
+                      {item.label}
+                      <span className="text-[9px]">▾</span>
+                    </button>
+                    <div
+                      className={`absolute left-1/2 -translate-x-1/2 top-full pt-2 transition-opacity duration-200 ${
+                        openCat === cat ? "opacity-100" : "opacity-0 pointer-events-none"
+                      }`}
+                    >
+                      <div className="bg-[color:var(--ink)] text-white shadow-2xl min-w-[220px] py-2">
+                        {(g[cat] ?? []).slice(0, 8).map((s) => (
+                          <Link
+                            key={s.slug}
+                            to="/services/$slug"
+                            params={{ slug: s.slug }}
+                            onClick={() => setOpenCat(null)}
+                            className="block px-5 py-2 text-[12px] text-white/80 hover:text-[color:var(--gold)] hover:bg-white/5 transition-colors"
+                          >
+                            {s.title}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
-            <NavLink to="/portfolio" label="Portfolio" />
-            <NavLink to="/films" label="Films" />
-            <NavLink to="/reviews" label="Reviews" />
-            <NavLink to="/blog" label="Blog" />
-            <NavLink to="/contact" label="Contact" />
+                );
+              }
+
+              return <NavLink key={item.id} to={item.to} label={item.label} />;
+            })}
           </nav>
 
           <div className="hidden lg:flex items-center gap-3">
@@ -135,50 +133,50 @@ export function SiteNav() {
           </div>
           <div className="container-lux pb-24">
             <ul className="divide-y divide-white/10 mt-4">
-              {[
-                { to: "/", label: "Home" },
-                { to: "/about", label: "About" },
-                { to: "/portfolio", label: "Portfolio" },
-                { to: "/films", label: "Films" },
-                { to: "/reviews", label: "Reviews" },
-                { to: "/blog", label: "Blog" },
-                { to: "/contact", label: "Contact" },
-              ].map((n) => (
-                <li key={n.to}>
-                  <Link
-                    to={n.to}
-                    onClick={() => setMobile(false)}
-                    className="block py-4 text-2xl font-display"
-                  >
-                    {n.label}
-                  </Link>
-                </li>
-              ))}
+              {enabledItems.map((item) => {
+                if (item.type === "dropdown") return null;
+                return (
+                  <li key={item.id}>
+                    <Link
+                      to={item.to}
+                      onClick={() => setMobile(false)}
+                      className="block py-4 text-2xl font-display"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
             <div className="mt-6">
               <div className="kbd-eyebrow text-[color:var(--gold)] mb-3">Services</div>
-              {SERVICE_CATS.map((cat) => (
-                <details key={cat} className="border-t border-white/10 py-3 group">
-                  <summary className="flex justify-between items-center cursor-pointer list-none text-white/90">
-                    <span className="font-display text-lg">{cat}</span>
-                    <span className="text-[color:var(--gold)] group-open:rotate-45 transition-transform">+</span>
-                  </summary>
-                  <ul className="mt-2 pl-2 space-y-2">
-                    {(g[cat] ?? []).map((s) => (
-                      <li key={s.slug}>
-                        <Link
-                          to="/services/$slug"
-                          params={{ slug: s.slug }}
-                          onClick={() => setMobile(false)}
-                          className="block py-1.5 text-sm text-white/70 hover:text-white"
-                        >
-                          {s.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              ))}
+              {enabledItems
+                .filter((item) => item.type === "dropdown")
+                .map((item) => {
+                  const cat = (item.dropdownCategory || item.label) as ServiceCategory;
+                  return (
+                    <details key={item.id} className="border-t border-white/10 py-3 group">
+                      <summary className="flex justify-between items-center cursor-pointer list-none text-white/90">
+                        <span className="font-display text-lg">{item.label}</span>
+                        <span className="text-[color:var(--gold)] group-open:rotate-45 transition-transform">+</span>
+                      </summary>
+                      <ul className="mt-2 pl-2 space-y-2">
+                        {(g[cat] ?? []).map((s) => (
+                          <li key={s.slug}>
+                            <Link
+                              to="/services/$slug"
+                              params={{ slug: s.slug }}
+                              onClick={() => setMobile(false)}
+                              className="block py-1.5 text-sm text-white/70 hover:text-white"
+                            >
+                              {s.title}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  );
+                })}
             </div>
             <div className="mt-8 grid grid-cols-2 gap-3">
               <a href={`tel:${settings.phoneRaw}`} className="flex items-center justify-center gap-2 border border-white/20 py-3 text-sm">
@@ -208,13 +206,13 @@ function NavLink({ to, label }: { to: string; label: string }) {
   );
 }
 
-function BrandMark() {
+function BrandMark({ className = "h-12 sm:h-14" }: { className?: string }) {
   const { settings } = useSiteContent();
   return (
     <img
       src={settings.logoUrl}
       alt={settings.name}
-      className="h-12 sm:h-14 w-auto object-contain"
+      className={`${className} w-auto object-contain`}
       loading="eager"
       decoding="async"
     />
