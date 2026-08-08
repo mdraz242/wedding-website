@@ -1711,23 +1711,38 @@ function BlogPanel() {
   const [editing, setEditing] = useState<Post | null>(null);
 
   const load = useCallback(async () => {
-    let res: Post[] = [];
+    let serverRes: Post[] = [];
     try {
-      res = ((await list()) as Post[]) ?? [];
+      serverRes = ((await list()) as Post[]) ?? [];
     } catch {}
+
+    let localPosts: Post[] = [];
     try {
       const l = localStorage.getItem("ks_custom_blog_posts");
-      if (l) {
-        const localPosts: Post[] = JSON.parse(l);
-        const existingKeys = new Set(res.map((p) => p.id || p.slug));
-        for (const lp of localPosts) {
-          if (!existingKeys.has(lp.id || lp.slug)) {
-            res.push(lp);
-          }
-        }
-      }
+      if (l) localPosts = JSON.parse(l);
     } catch {}
-    setPosts(res);
+
+    let deletedKeys = new Set<string>();
+    try {
+      const d = localStorage.getItem("ks_custom_deleted_blog_posts");
+      if (d) deletedKeys = new Set(JSON.parse(d));
+    } catch {}
+
+    const map = new Map<string, Post>();
+    for (const p of serverRes) {
+      const k = p.id || p.slug;
+      if (k && !deletedKeys.has(k) && !deletedKeys.has(p.slug)) {
+        map.set(k, p);
+      }
+    }
+    for (const p of localPosts) {
+      const k = p.id || p.slug;
+      if (k && !deletedKeys.has(k) && !deletedKeys.has(p.slug)) {
+        map.set(k, p);
+      }
+    }
+
+    setPosts(Array.from(new Set(map.values())));
   }, [list]);
 
   useEffect(() => {
@@ -1830,6 +1845,16 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
       published_at: p.published && !p.published_at ? new Date().toISOString() : p.published_at,
     };
 
+    // Remove from deleted list if re-saving
+    try {
+      const d = localStorage.getItem("ks_custom_deleted_blog_posts");
+      if (d) {
+        let deleted: string[] = JSON.parse(d);
+        deleted = deleted.filter((k) => k !== idToUse && k !== slug);
+        localStorage.setItem("ks_custom_deleted_blog_posts", JSON.stringify(deleted));
+      }
+    } catch {}
+
     // Save to LocalStorage immediately for client-side persistence
     try {
       const l = localStorage.getItem("ks_custom_blog_posts");
@@ -1879,6 +1904,7 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
 
   const remove = async () => {
     if (!confirm("Delete this post?")) return;
+    const key = p.id || p.slug;
     try {
       const l = localStorage.getItem("ks_custom_blog_posts");
       if (l) {
@@ -1886,7 +1912,13 @@ function PostEditor({ post, onClose }: { post: Post; onClose: () => void }) {
         list = list.filter((x) => x.id !== p.id && x.slug !== p.slug);
         localStorage.setItem("ks_custom_blog_posts", JSON.stringify(list));
       }
+      const d = localStorage.getItem("ks_custom_deleted_blog_posts");
+      let deleted: string[] = d ? JSON.parse(d) : [];
+      if (key && !deleted.includes(key)) deleted.push(key);
+      if (p.slug && !deleted.includes(p.slug)) deleted.push(p.slug);
+      localStorage.setItem("ks_custom_deleted_blog_posts", JSON.stringify(deleted));
     } catch {}
+
     if (p.id) {
       try {
         await removeFn({ data: { id: p.id } });

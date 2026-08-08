@@ -49,27 +49,39 @@ function Blog() {
       .order("published_at", { ascending: false })
       .then(({ data }) => {
         let dbList: Post[] = (data as unknown as Post[]) ?? [];
+        let localPosts: Post[] = [];
+        let deletedKeys = new Set<string>();
         try {
           const l = localStorage.getItem("ks_custom_blog_posts");
-          if (l) {
-            const localPosts: Post[] = JSON.parse(l);
-            const pubLocal = localPosts.filter((p: any) => p.published !== false);
-            const dbSlugs = new Set(dbList.map((p) => p.slug));
-            for (const lp of pubLocal) {
-              if (!dbSlugs.has(lp.slug)) {
-                dbList.push(lp);
-              }
-            }
-          }
+          if (l) localPosts = JSON.parse(l);
+          const d = localStorage.getItem("ks_custom_deleted_blog_posts");
+          if (d) deletedKeys = new Set(JSON.parse(d));
         } catch {}
-        setPosts(dbList);
+
+        const map = new Map<string, Post>();
+        for (const p of dbList) {
+          const k = p.slug || p.id;
+          if (k && !deletedKeys.has(k) && !deletedKeys.has(p.id)) {
+            map.set(k, p);
+          }
+        }
+        for (const p of localPosts) {
+          if (p.published === false) continue;
+          const k = p.slug || p.id;
+          if (k && !deletedKeys.has(k) && !deletedKeys.has(p.id)) {
+            map.set(k, p);
+          }
+        }
+        setPosts(Array.from(map.values()));
       })
       .catch(() => {
         try {
           const l = localStorage.getItem("ks_custom_blog_posts");
+          const d = localStorage.getItem("ks_custom_deleted_blog_posts");
+          const deletedKeys = d ? new Set(JSON.parse(d)) : new Set<string>();
           if (l) {
             const localPosts: Post[] = JSON.parse(l);
-            setPosts(localPosts.filter((p: any) => p.published !== false));
+            setPosts(localPosts.filter((p) => p.published !== false && !deletedKeys.has(p.slug) && !deletedKeys.has(p.id)));
           } else {
             setPosts([]);
           }
@@ -83,9 +95,11 @@ function Blog() {
     if (posts && posts.length > 0) return posts;
     try {
       const l = localStorage.getItem("ks_custom_blog_posts");
+      const d = localStorage.getItem("ks_custom_deleted_blog_posts");
+      const deletedKeys = d ? new Set(JSON.parse(d)) : new Set<string>();
       if (l) {
         const localPosts: Post[] = JSON.parse(l);
-        const pub = localPosts.filter((p: any) => p.published !== false);
+        const pub = localPosts.filter((p: any) => p.published !== false && !deletedKeys.has(p.slug) && !deletedKeys.has(p.id));
         if (pub.length > 0) return pub;
       }
     } catch {}

@@ -36,6 +36,33 @@ function Post() {
   const [post, setPost] = useState<Post | null | undefined>(undefined);
 
   useEffect(() => {
+    let deletedKeys = new Set<string>();
+    try {
+      const d = localStorage.getItem("ks_custom_deleted_blog_posts");
+      if (d) deletedKeys = new Set(JSON.parse(d));
+    } catch {}
+
+    if (deletedKeys.has(slug)) {
+      setPost(null);
+      return;
+    }
+
+    try {
+      const l = localStorage.getItem("ks_custom_blog_posts");
+      if (l) {
+        const localPosts: Post[] = JSON.parse(l);
+        const found = localPosts.find((p) => p.slug === slug);
+        if (found) {
+          if (found.id && deletedKeys.has(found.id)) {
+            setPost(null);
+            return;
+          }
+          setPost(found);
+          return;
+        }
+      }
+    } catch {}
+
     supabase
       .from("blog_posts")
       .select("*")
@@ -43,31 +70,13 @@ function Post() {
       .eq("published", true)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) {
+        if (data && !deletedKeys.has(data.id) && !deletedKeys.has(data.slug)) {
           setPost(data as Post);
         } else {
-          try {
-            const l = localStorage.getItem("ks_custom_blog_posts");
-            if (l) {
-              const localPosts: Post[] = JSON.parse(l);
-              const found = localPosts.find((p) => p.slug === slug);
-              if (found) return setPost(found);
-            }
-          } catch {}
           setPost(null);
         }
       })
-      .catch(() => {
-        try {
-          const l = localStorage.getItem("ks_custom_blog_posts");
-          if (l) {
-            const localPosts: Post[] = JSON.parse(l);
-            const found = localPosts.find((p) => p.slug === slug);
-            if (found) return setPost(found);
-          }
-        } catch {}
-        setPost(null);
-      });
+      .catch(() => setPost(null));
   }, [slug]);
 
   if (post === undefined) return <div className="min-h-screen bg-background" />;
